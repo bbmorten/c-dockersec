@@ -1,0 +1,70 @@
+# `/proc/<PID>/` - Process-Specific Files
+
+Below is a (fairly exhaustive) rundown of what you’ll find under `/proc/<PID>/` and what each entry is for:
+
+| Name                     | What it is / shows                                                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| **arch\_status**         | Architecture-specific status info (e.g. for perf events or CPU features).                                             |
+| **attr**                 | LSM (AppArmor/SELinux) security attributes for the process.                                                           |
+| **autogroup**            | Linux “autogroup” scheduler data—how the kernel groups tasks for CFS scheduling.                                      |
+| **auxv**                 | ELF auxiliary vector passed at exec: runtime parameters (like page size, program header location, random seed, etc.). |
+| **cgroup**               | Which cgroup hierarchies and subsystems (cpu, memory, blkio, etc.) this PID belongs to.                               |
+| **clear\_refs**          | Write here to clear R/O “referenced” or “dirty” flags on the process’s pages (for testing).                           |
+| **cmdline**              | The full argv\[] of the process, NUL-separated.                                                                       |
+| **comm**                 | The process’s “short” name (16 chars max)—what shows up in tools like `top`.                                          |
+| **coredump\_filter**     | Bitmask controlling which memory segments get included if the process dumps core.                                     |
+| **cpu\_resctrl\_groups** | Intel RDT “resctrl” group membership (resource control for cache/MBA).                                                |
+| **cpuset**               | cpuset cgroup info—what CPUs and memory nodes the process may use.                                                    |
+| **cwd**                  | Symlink to the process’s current working directory.                                                                   |
+| **environ**              | The process’s environment (`VAR=…`), NUL-separated.                                                                   |
+| **exe**                  | Symlink to the actual executable file on disk (might be `[deleted]`).                                                 |
+| **fd/**                  | Directory of open file descriptors; each entry is a symlink to the underlying file/socket/pipe.                       |
+| **fdinfo/**              | Per-FD details (offset, flags, locks) for each open descriptor.                                                       |
+| **gid\_map**             | GID mappings if inside a user namespace (shows host⇄namespace group translations).                                    |
+| **io**                   | I/O statistics: #bytes read/written via syscalls, cancelled writeback, syscalls counts, etc.                          |
+| **ksm\_merging\_pages**  | Number of pages currently merged by Kernel Samepage Merging for this process.                                         |
+| **ksm\_stat**            | KSM statistics (total pages shared/unshared).                                                                         |
+| **limits**               | The RLIMIT\_ resource limits in force (max files, max memory, CPU time, etc.).                                        |
+| **loginuid**             | Audit login UID assigned at session start (used by Linux Auditing).                                                   |
+| **map\_files**           | Breakdown of which backing files (and how many pages) are mapped into this process’s address space.                   |
+| **maps**                 | The raw memory map: address ranges, perms, offsets, file names, etc.                                                  |
+| **mem**                  | Special interface to read the process’s memory (requires `ptrace` permissions).                                       |
+| **mountinfo**            | Mount points and namespaces visible to the process (from `/proc/self/mountinfo`).                                     |
+| **mountstats**           | Per-mount (e.g. NFS) statistics.                                                                                      |
+| **net/**                 | Per-protocol network info: sockets, TCP/UDP stats, ARP tables, etc.                                                   |
+| **ns/**                  | Symlinks to namespace descriptors (pid, net, ipc, uts, user, cgroup, mnt).                                            |
+| **numa\_maps**           | NUMA policy and per-node memory usage for this process.                                                               |
+| **oom\_adj**             | (Legacy) OOM killer adjustment.                                                                                       |
+| **oom\_score**           | Current OOM “badness” score (likelihood the kernel will kill this when under memory pressure).                        |
+| **pagemap**              | Low-level: virtual-page → physical-frame mappings, swap info, soft-dirty bits.                                        |
+| **patch\_state**         | If livepatch is used on the kernel, shows which patches this process has applied.                                     |
+| **personality**          | The “personality” flags (e.g. UNIX98, linux32) modifying syscall behavior.                                            |
+| **projid\_map**          | Project-ID mappings in a user namespace (less commonly used).                                                         |
+| **root**                 | Symlink to the process’s root directory (after any `chroot`).                                                         |
+| **sched**                | Scheduler parameters: policy (RR, FIFO, CFS), priority, run-queue stats.                                              |
+| **schedstat**            | Scheduler accounting: how long it’s run, waited on run-queue, etc.                                                    |
+| **sessionid**            | The session ID (from `setsid()` / login session) of this process.                                                     |
+| **setgroups**            | Controls whether `setgroups(2)` is allowed in a user namespace.                                                       |
+| **smaps**                | Detailed memory accounting per-mapping: RSS, PSS, dirty, swap, etc.                                                   |
+| **smaps\_rollup**        | Aggregated summary of all the `smaps` entries (total RSS, PSS, swap, etc.).                                           |
+| **stat**                 | Task state info (R/S/Z/T), Tgid, PPid, CPU times, virtual / resident sizes—machine-readable.                          |
+| **statm**                | Memory sizes: total program size, resident, shared, text, lib, data, dirty (pages).                                   |
+| **status**               | Human-readable summary of `stat` + UIDs, GIDs, threads, voluntary/involuntary context-switch counts, etc.             |
+| **syscall**              | If the task is blocked in a syscall, shows syscall number and arguments.                                              |
+| **task/**                | Directory of threads: one sub-directory per TID, with the same layout as `/proc/<PID>/…`.                             |
+| **timers**               | POSIX interval-timer info (which timers are active, their expirations).                                               |
+| **timens\_offsets**      | Offsets controlling “time namespaces” (if in one) for CLOCK\_REALTIME, MONOTONIC, etc.                                |
+| **uid\_map**             | UID mappings in a user namespace (host⇄namespace translations).                                                       |
+| **wchan**                | Name (symbolic) of the kernel function where the task is sleeping (if in an uninterruptible wait).                    |
+
+---
+
+**In practice**, you’ll most often poke at:
+
+* `/proc/<PID>/cmdline`, `/status` or `/stat` to see what it is and who owns it
+* `/proc/<PID>/fd/` to inspect open files/sockets
+* `/proc/<PID>/ns/` to figure out which namespaces it lives in
+* `/proc/<PID>/limits` to check resource caps
+* `/proc/<PID>/smaps` or `/statm` for memory usage details
+
+But now you have the full catalog—you can explore pretty much anything about a live process via these virtual files!

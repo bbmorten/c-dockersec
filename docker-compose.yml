@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  nextra:
+    image: node:18-alpine
+    container_name: nextra-docs
+
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    working_dir: /app
+    command: sh -c "npm install && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+    restart: unless-stopped
+    networks:
+      - nextra-network
+
+  # Optional: Add nginx for production-like serving
+  nginx:
+    image: nginx:alpine
+    container_name: nextra-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - nextra
+    networks:
+      - nextra-network
+    profiles:
+      - production
+
+networks:
+  nextra-network:
+    driver: bridge

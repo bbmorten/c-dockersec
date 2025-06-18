@@ -1,0 +1,62 @@
+# Lab: Exploring Process Relationships in Containers (Ubuntu 24.04 Guide)
+
+## Objective
+Understand and visualize the relationship between process IDs (PIDs) on the host, container engine, runtime, and inside the container using tools like `pstree`, `ps`, and `nsenter`.
+
+## Prerequisites
+- Ubuntu 24.04 system (VM or bare metal)
+- Docker Engine installed (`sudo apt update && sudo apt install docker.io -y`)
+- `pstree` installed (`sudo apt install psmisc -y`)
+- `nsenter` installed (`sudo apt install util-linux -y`)
+
+## Lab Steps
+
+1. **Start a Test Container**
+   ```bash
+   docker run -d --name proc-demo ubuntu:24.04 sleep 300
+   ```
+
+2. **Find the Container's PID on the Host**
+   - Get the container's main process PID as seen by the host:
+     ```bash
+     docker inspect -f '{{.State.Pid}}' proc-demo
+     ```
+   - Note this PID (e.g., 12345).
+
+3. **Visualize the Process Tree**
+   - Use `pstree` to see the relationship between Docker, containerd, runc, and the container process:
+     ```bash
+     sudo pstree -s -p 12345
+     ```
+   - Look for a hierarchy like:
+     ```
+     systemd(1)-+-containerd-shim(PID3)-+-sleep(12345)
+     ```
+
+4. **Explore the Container's Process Namespace**
+   - Use `nsenter` to enter the container's PID namespace:
+     ```bash
+     sudo nsenter -t 12345 -p ps aux
+     ```
+   - The `sleep` process will appear as PID 1 inside the container, even though it has a different PID on the host.
+
+5. **Compare Process Listings**
+   - On the host:
+     ```bash
+     ps -ef | grep sleep
+     ```
+   - Inside the container:
+     ```bash
+     docker exec proc-demo ps -ef
+     ```
+   - Observe the PID differences and the isolated process tree.
+
+6. **(Optional) Explore with Other Runtimes**
+   - If using rootless Docker, containerd, or gVisor/Kata, repeat the above steps and note any differences in the process tree or PID mapping.
+
+## Deliverable
+Submit screenshots or command outputs showing:
+- The process tree from the host
+- The PID mapping between host and container
+- The process listing inside the container
+- A brief explanation of the relationship between host and container PIDs

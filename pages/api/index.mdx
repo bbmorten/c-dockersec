@@ -1,0 +1,45 @@
+# API Reference
+
+This section contains API documentation.
+
+## Authentication
+
+All API requests require authentication:
+
+```bash
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+     https://api.example.com/endpoint
+```
+
+## Endpoints
+
+### GET /users
+
+Retrieve a list of users.
+
+**Response:**
+
+```json
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "John Doe",
+      "email": "john@example.com"
+    }
+  ]
+}
+```
+
+### POST /users
+
+Create a new user.
+
+**Request:**
+
+```json
+{
+  "name": "Jane Doe",
+  "email": "jane@example.com"
+}
+```

@@ -1,0 +1,47 @@
+# Configuration
+
+Learn how to configure your documentation site.
+
+## Theme Configuration
+
+Edit `theme.config.tsx` to customize:
+
+- Site logo and branding
+- Navigation links
+- Footer content
+- Search settings
+
+## Next.js Configuration
+
+The `next.config.js` file controls:
+
+- Build settings
+- Output configuration
+- Plugin settings
+
+## Environment Variables
+
+You can use environment variables for configuration:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://your-domain.com
+NEXT_PUBLIC_ANALYTICS_ID=your-analytics-id
+```
+
+## Deployment
+
+### Docker
+
+Use the provided Docker configuration:
+
+```bash
+docker-compose up -d
+```
+
+### Vercel
+
+Deploy to Vercel with zero configuration:
+
+```bash
+vercel --prod
+```

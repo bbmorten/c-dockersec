@@ -1,0 +1,61 @@
+# proc/pid/status
+
+Here’s what each line in that `/proc/30215/status` snippet means, and how to read the hex masks into actual capability names:
+
+```text
+Uid:    0       0       0       0
+Gid:    0       0       0       0
+Groups: 0
+CapInh: 0000000000000000
+CapPrm: 00000000a80425fb
+CapEff: 00000000a80425fb
+CapBnd: 00000000a80425fb
+CapAmb: 0000000000000000
+```
+
+| Field      | Meaning                                                              |
+| ---------- | -------------------------------------------------------------------- |
+| **Uid**    | real, effective, saved-set, **filesystem** UIDs (all `0` → **root**) |
+| **Gid**    | real, effective, saved-set, filesystem GIDs (all `0` → **root**)     |
+| **Groups** | supplementary (secondary) group IDs (only `0` → the root group)      |
+
+The next lines are [Linux capability sets](./linux-capability-sets.mdx), each shown as a 64-bit hex mask:
+
+* **CapInh**: capabilities **inherited** across an `execve()`.
+* **CapPrm**: **permitted** capabilities—the superset this process may make effective.
+* **CapEff**: **effective** capabilities—those currently in force.
+* **CapBnd**: **bounding** set—the outer limit that can’t be added to permitted.
+* **CapAmb**: **ambient** capabilities—automatically kept across `execve()` if in both the inheritable and permitted sets.
+
+Here, only the **Prm**, **Eff**, and **Bnd** sets are non-zero (`0xA80425FB`). Decoding that mask gives the following capabilities enabled in all three sets:
+
+```
+CAP_CHOWN              (bit  0)
+CAP_DAC_OVERRIDE       (bit  1)
+CAP_FOWNER             (bit  3)
+CAP_FSETID             (bit  4)
+CAP_KILL               (bit  5)
+CAP_SETGID             (bit  6)
+CAP_SETUID             (bit  7)
+CAP_SETPCAP            (bit  8)
+CAP_NET_BIND_SERVICE   (bit 10)
+CAP_NET_RAW            (bit 13)
+CAP_SYS_CHROOT         (bit 18)
+CAP_MKNOD              (bit 27)
+CAP_AUDIT_WRITE        (bit 29)
+CAP_SETFCAP            (bit 31)
+```
+
+* **CapInh = 0**: it won’t inherit any extra capabilities on exec.
+* **CapAmb = 0**: no ambient capabilities are in play (these are rarely used).
+
+---
+
+### In plain English
+
+1. **This process is running as root** (UID=0/GID=0), with no additional Linux groups.
+2. **It holds a broad set of capabilities**—notably the ability to change ownership on files, override DAC checks, bind low-numbered ports, perform raw network I/O, enter chroots, and more.
+3. Because its **bounding set** equals its **permitted set**, it can’t raise itself to any capability it doesn’t already hold.
+4. Since **inheritable** and **ambient** are zero, children of this process (via `exec`) won’t automatically pick up capabilities beyond the standard behavior for a root-owned process.
+
+In effect, it’s a fully “powered” root process, but written in the finer-grained Linux capability model rather than the old all-or-nothing root model.

@@ -1,0 +1,43 @@
+# Linux Capability Sets
+
+
+Linux capabilities split the all-powerful root privilege into fine-grained bits.  Each process carries five distinct capability sets, represented in `/proc/<PID>/status` as 64-bit bitmasks:
+
+1. **CapInh (Inheritable)**
+
+   * Capabilities a process **may** pass to a child across an `execve()` if the executable file also has the corresponding inheritable bits set.
+   * Useful for controlled “sandboxing”: you mark which caps a program can inherit, but they won’t automatically transfer unless explicitly allowed.
+
+2. **CapPrm (Permitted)**
+
+   * The superset of capabilities the kernel **allows** the process to make effective.
+   * A process can only drop bits from this set; it cannot add new ones unless it’s privileged (e.g. via file capabilities on an executable).
+   * If a bit is unset here, the process can never use that capability in its Effective set.
+
+3. **CapEff (Effective)**
+
+   * The active capabilities currently in force.
+   * Only capabilities that are both in the **Permitted** set (and if relevant, in the **Ambient** set) can be in Effective.
+   * System calls check only the Effective set when deciding if a privileged operation is allowed.
+
+4. **CapBnd (Bounding)**
+
+   * An upper limit on the process’s permitted capabilities.
+   * Even if a binary has file-capabilities, or if the kernel would otherwise grant more, bits outside this bounding set can never enter the Permitted set.
+   * Bounding caps can only ever shrink over a process’s lifetime (for security).
+
+5. **CapAmb (Ambient)**
+
+   * A relatively new set (Linux 4.3+) that lets processes retain specific capabilities across `execve()` without needing file capabilities or inheritable bits.
+   * A capability must be in both the Inheritable and Permitted sets before you can “raise” it into the Ambient set.
+   * Makes it easier to build secure wrappers: you explicitly “ambientize” only the caps you want preserved on exec.
+
+---
+
+### Typical workflow
+
+* **Startup**: A setuid or file-capable binary begins with some initial Permitted, Inheritable, and Bounding bits per its file metadata and parent process.
+* **Drop privileges**: Good practice is to clear unneeded bits from CapEff (and often from Permitted/Bounding) as early as possible.
+* **Ambient use**: If you need a specific cap in a long-running child process that re-execs new binaries, you can move it into Ambient so it isn’t lost on exec.
+
+By understanding and correctly manipulating these five sets, you can grant just enough privilege for a service to do its job—and no more—hardening your system against accidental or malicious misuse of root-level powers.

@@ -1,0 +1,82 @@
+# Explanation of `/proc//` Directory Entries
+
+The `/proc//` directory in Linux provides detailed information and control interfaces for a specific process identified by its process ID (`pid`). Each file or subdirectory within `/proc//` reveals specific aspects of the process's state, resources, and behavior.
+
+## Key Entries and Their Functions
+
+| Entry Name         | Description                                                                                 |
+|--------------------|--------------------------------------------------------------------------------------------|
+| arch_status        | Architecture-specific status information (may be empty or absent on some systems).      |
+| attr               | Contains security attributes (like SELinux).                                            |
+| autogroup          | Scheduler autogroup information for the process.                                        |
+| auxv               | Process's ELF auxiliary vector, used at program startup.                                |
+| cgroup             | Lists cgroups the process belongs to.                                                   |
+| clear_refs         | Allows clearing of memory reference bits for the process.                               |
+| cmdline            | Command line arguments used to start the process.                                       |
+| comm               | Command name (basename of executable).                                                  |
+| coredump_filter    | Controls which memory segments are dumped on a core dump.                               |
+| cpu_resctrl_groups | Shows resource control group assignments for the process.                               |
+| cpuset             | Displays cpuset (CPU affinity) information.                                             |
+| cwd                | Symlink to the process's current working directory.                                     |
+| environ            | Process environment variables.                                                          |
+| exe                | Symlink to the executable running as this process.                                      |
+| fd                 | Directory of file descriptors opened by the process.                                    |
+| fdinfo             | Additional information about each file descriptor.                                      |
+| gid_map            | GID mapping for user namespaces.                                                        |
+| io                 | I/O statistics for the process.                                                         |
+| ksm_merging_pages  | Shows KSM (Kernel Samepage Merging) stats for the process.                              |
+| ksm_stat           | KSM statistics for the process.                                                         |
+| latency            | Latency-related information (if enabled).                                               |
+| limits             | Resource limits for the process (ulimits).                                              |
+| loginuid           | Login UID of the process.                                                               |
+| map_files          | Directory with symlinks to files mapped into the process's address space.               |
+| maps               | Memory mappings of the process.                                                         |
+| mem                | Provides access to the process's memory.                                                |
+| mountinfo          | Detailed mount information for the process's namespace.                                 |
+| mounts             | Mount points visible to the process.                                                    |
+| mountstats         | Statistics about mounts.                                                                |
+| net                | Network information for the process.                                                    |
+| numa_maps          | NUMA memory policy and usage.                                                           |
+| oom_adj            | Adjusts OOM killer score (deprecated).                                                  |
+| oom_score          | Current OOM killer score.                                                               |
+| oom_score_adj      | Adjusts OOM killer score (replacement for oom_adj).                                     |
+| pagemap            | Page table information for the process.                                                 |
+| patch_state        | Kernel live patch state for the process.                                                |
+| personality        | Process execution domain (affects system call behavior).                                |
+| projid_map         | Project ID mapping for namespaces.                                                      |
+| root               | Symlink to the process's root directory.                                                |
+| sched              | Scheduling information for the process.                                                 |
+| schedstat          | Scheduler statistics.                                                                   |
+| sessionid          | Session ID of the process.                                                              |
+| setgroups          | Controls setgroups syscall in user namespaces.                                          |
+| smaps              | Detailed memory mapping info, including usage and permissions.                          |
+| smaps_rollup       | Aggregated memory mapping info.                                                         |
+| stack              | Symlink to the process's stack.                                                         |
+| stat               | Status information about the process.                                                   |
+| statm              | Memory usage information.                                                               |
+| status             | Human-readable status information.                                                      |
+| syscall            | Information about the system call the process is executing.                             |
+| task               | Directory containing threads (tasks) of the process.                                    |
+| timers             | POSIX timers for the process.                                                           |
+| timerslack_ns      | Timer slack value for the process.                                                      |
+| timens_offsets     | Time namespace offsets.                                                                 |
+| uid_map            | UID mapping for user namespaces.                                                        |
+| wchan              | Kernel function in which the process is sleeping.                                       |
+
+## Usage
+
+- **Monitoring:** Inspect these files to monitor process resource usage, open files, memory maps, and more.
+- **Debugging:** Useful for debugging issues related to memory, file descriptors, or process state.
+- **Security:** Some entries (like `attr`, `oom_score_adj`) are used for security and resource management.
+
+## Notes
+
+- Not all entries are present on every system or for every process; availability depends on kernel version and configuration.
+- Many files are readable as plain text, but some are binary or require root privileges.
+
+---
+
+**References:**  
+: https://man7.org/linux/man-pages/man5/proc.5.html  
+: https://www.kernel.org/doc/html/latest/filesystems/proc.html  
+: https://tldp.org/LDP/Linux-Filesystem-Hierarchy/html/proc.html

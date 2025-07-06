@@ -1,0 +1,201 @@
+---
+type: page
+title: Exploring Process Relationships in Containers
+description: Understand the relationship between process IDs (PIDs) on the host, container engine, runtime, and inside the container using tools like pstree, ps, and nsenter.
+---
+# Exploring Process Relationships in Containers (Ubuntu 24.04 Guide)
+
+### 🧠 **Process Tree Output**
+
+```bash
+systemd(1)
+└─ containerd-shim(PID3)
+    └─ sleep(12345)
+```
+
+This output means:
+
+| Process                 | Description                                                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `systemd(1)`            | The **init system** (PID 1) of the host OS, responsible for starting and managing all system services.               |
+| `containerd-shim(PID3)` | A **per-container process manager** created by `containerd`. Its job is to keep the container running independently. |
+| `sleep(12345)`          | The actual process **inside the container** — in this case, it's just a `sleep` command running.                     |
+
+---
+
+### 🔍 `containerd` vs `containerd-shim`
+
+| Aspect                                     | `containerd`                                                                            | `containerd-shim`                                                                                     |
+| ------------------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **What is it?**                            | A **container runtime daemon**. Manages container lifecycle: pull, create, start, stop. | A **lightweight process** started per container to manage its execution and IO.                       |
+| **Who starts it?**                         | Started by systemd (or via Docker or Kubernetes).                                       | Started by `containerd` when launching a container.                                                   |
+| **Lifetime**                               | Long-running daemon on the host.                                                        | One per container, lives as long as the container.                                                    |
+| **Responsibility**                         | Orchestrates containers and talks to the OS and container image store.                  | Holds the container's **STDIO**, **exit status**, and ensures the container can outlive `containerd`. |
+| **Why it's needed**                        | High-level manager of multiple containers.                                              | Needed so containers don’t get killed if `containerd` restarts.                                       |
+| **Does it execute the container process?** | No. It delegates that to the shim.                                                      | Yes. It executes the container’s main process (like `sleep`) using `runc`.                            |
+
+---
+
+### 🧬 Teaching Analogy
+
+
+> "`containerd` is like a factory supervisor, managing many workers (containers). But instead of micro-managing each one, it spawns a `containerd-shim` to handle each container's day-to-day work (like running and watching the `sleep` process). This way, even if the supervisor leaves (i.e., `containerd` crashes), the work continues smoothly."
+
+---
+
+### Bonus: Why not just use `runc` directly?
+
+* `runc` **starts** containers but **exits immediately** after doing so.
+* The `containerd-shim` is needed to:
+
+  * Hold open file descriptors (e.g., for `stdout`/`stderr`).
+  * Reap zombie processes.
+  * Return exit status to `containerd` later.
+
+---
+### Inspect Container Process PID Script
+
+
+```shell
+#!/bin/bash
+
+# Usage: ./inspect-container-process.sh <CONTAINER_PID>
+# Example: ./inspect-container-process.sh 65627
+# Get the PID of a running Docker container
+# You can find the PID using:
+# docker inspect -f '{{.State.Pid}}' proc-demo
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 <CONTAINER_PID>"
+    exit 1
+fi
+
+CONTAINER_PID=$1
+
+echo "📦 Process Tree (pstree -s -p $CONTAINER_PID)"
+echo "--------------------------------------------"
+sudo pstree -s -p "$CONTAINER_PID"
+echo ""
+
+# Get Parent PID
+PARENT_PID=$(ps -o ppid= -p "$CONTAINER_PID" | tr -d ' ')
+if [ -z "$PARENT_PID" ]; then
+    echo "❌ Could not find parent PID for $CONTAINER_PID"
+    exit 1
+fi
+
+# Show detailed info
+echo "👤 Process Info"
+echo "--------------------------------------------"
+ps -o pid,ppid,user,comm -p "$CONTAINER_PID","$PARENT_PID",1
+
+# Expand threads
+echo ""
+echo "🧵 Threads of containerd-shim (PID $PARENT_PID)"
+echo "--------------------------------------------"
+ps -T -p "$PARENT_PID"
+
+```
+
+
+```shell filename="inspect-container-process.sh"
+vm@DS-STD15:~/labs$ ./inspect-container-process.sh  65627
+📦 Process Tree (pstree -s -p 65627)
+--------------------------------------------
+systemd(1)───containerd-shim(65605)───sleep(65627)
+
+👤 Process Info
+--------------------------------------------
+    PID    PPID USER     COMMAND
+      1       0 root     systemd
+  65605       1 root     containerd-shim
+  65627   65605 root     sleep
+
+🧵 Threads of containerd-shim (PID 65605)
+--------------------------------------------
+    PID    SPID TTY          TIME CMD
+  65605   65605 ?        00:00:00 containerd-shim
+  65605   65606 ?        00:00:00 containerd-shim
+  65605   65607 ?        00:00:00 containerd-shim
+  65605   65608 ?        00:00:00 containerd-shim
+  65605   65609 ?        00:00:00 containerd-shim
+  65605   65610 ?        00:00:00 containerd-shim
+  65605   65611 ?        00:00:00 containerd-shim
+  65605   65612 ?        00:00:00 containerd-shim
+  65605   65613 ?        00:00:00 containerd-shim
+  65605   65634 ?        00:00:00 containerd-shim
+  65605   65659 ?        00:00:00 containerd-shim
+  65605   65814 ?        00:00:00 containerd-shim
+```
+
+### Another version of the script
+
+```shell filename="inspect-container.sh"
+#!/bin/bash
+
+# Usage:
+#   ./inspect-container.sh <PID>
+#   ./inspect-container.sh --docker <container-name-or-id>
+#   ./inspect-container.sh --ctr <container-id>
+
+print_usage() {
+  echo "Usage:"
+  echo "  $0 <PID>"
+  echo "  $0 --docker <docker-container-name-or-id>"
+  echo "  $0 --ctr <containerd-container-id>"
+  exit 1
+}
+
+if [ $# -lt 1 ]; then
+  print_usage
+fi
+
+get_pid_from_docker() {
+  local container_id="$1"
+  docker inspect --format '{{.State.Pid}}' "$container_id" 2>/dev/null
+}
+
+get_pid_from_ctr() {
+  local container_id="$1"
+  sudo ctr task ls | grep "$container_id" | awk '{print $2}'
+}
+
+# Determine mode
+if [ "$1" = "--docker" ] && [ -n "$2" ]; then
+  CONTAINER_PID=$(get_pid_from_docker "$2")
+elif [ "$1" = "--ctr" ] && [ -n "$2" ]; then
+  CONTAINER_PID=$(get_pid_from_ctr "$2")
+elif [[ "$1" =~ ^[0-9]+$ ]]; then
+  CONTAINER_PID="$1"
+else
+  print_usage
+fi
+
+if [ -z "$CONTAINER_PID" ]; then
+  echo "❌ Could not determine container PID."
+  exit 1
+fi
+
+echo "📦 Process Tree (pstree -s -p $CONTAINER_PID)"
+echo "--------------------------------------------"
+sudo pstree -s -p "$CONTAINER_PID"
+echo ""
+
+# Get Parent PID
+PARENT_PID=$(ps -o ppid= -p "$CONTAINER_PID" | tr -d ' ')
+if [ -z "$PARENT_PID" ]; then
+    echo "❌ Could not find parent PID for $CONTAINER_PID"
+    exit 1
+fi
+
+# Show process info
+echo "👤 Process Info"
+echo "--------------------------------------------"
+ps -o pid,ppid,user,comm -p "$CONTAINER_PID","$PARENT_PID",1
+
+# Show threads of shim
+echo ""
+echo "🧵 Threads of containerd-shim (PID $PARENT_PID)"
+echo "--------------------------------------------"
+ps -T -p "$PARENT_PID"
+```

@@ -1,0 +1,117 @@
+# 🔬 Bonus: Advanced Lab – Bridge Integration with Network Namespaces
+
+## 🎯 Lab Objectives
+
+- Create isolated network namespaces
+- Connect them using a custom Linux bridge
+- Provide inter-namespace communication while isolating from the host
+- Optionally run containers with only `lo` and bridge-based networking
+
+---
+
+## 🧱 Lab Topology
+
+```
+[ ns1 ] ←→ [ br0 ] ←→ [ ns2 ]
+```
+
+No default route or access to host unless explicitly provided.
+
+---
+
+## 🛠️ Step-by-Step Setup
+
+### 1. Create Network Namespaces
+
+```bash
+sudo ip netns add ns1
+sudo ip netns add ns2
+```
+
+### 2. Create veth Pairs
+
+```bash
+sudo ip link add veth-ns1 type veth peer name br-veth1
+sudo ip link add veth-ns2 type veth peer name br-veth2
+```
+
+### 3. Create Bridge and Add veths
+
+```bash
+sudo ip link add br0 type bridge
+sudo ip link set br0 up
+
+sudo ip link set br-veth1 master br0
+sudo ip link set br-veth2 master br0
+sudo ip link set br-veth1 up
+sudo ip link set br-veth2 up
+```
+
+### 4. Move veth Interfaces into Namespaces
+
+```bash
+sudo ip link set veth-ns1 netns ns1
+sudo ip link set veth-ns2 netns ns2
+```
+
+### 5. Configure IPs and Bring Up Interfaces
+
+```bash
+# Namespace ns1
+sudo ip netns exec ns1 ip addr add 10.100.1.1/24 dev veth-ns1
+sudo ip netns exec ns1 ip link set veth-ns1 up
+sudo ip netns exec ns1 ip link set lo up
+
+# Namespace ns2
+sudo ip netns exec ns2 ip addr add 10.100.1.2/24 dev veth-ns2
+sudo ip netns exec ns2 ip link set veth-ns2 up
+sudo ip netns exec ns2 ip link set lo up
+```
+
+### 6. Test Connectivity
+
+```bash
+sudo ip netns exec ns1 ping -c 3 10.100.1.2
+```
+
+---
+
+## 📦 Optional: Isolated Container with `lo` and veth only
+
+You can create a Podman or Docker container that uses only `lo` and manually inject it into the bridge if needed (using a custom network namespace).
+
+Example with Podman:
+
+```bash
+podman run -d --name testbox --network=none alpine sleep 3600
+
+# Get container PID
+pid=$(podman inspect -f '{{.State.Pid}}' testbox)
+
+# Move veth into container's namespace
+sudo ip link add veth-c1 type veth peer name veth-host1
+sudo ip link set veth-c1 netns $pid
+sudo ip link set veth-host1 master br0
+sudo ip link set veth-host1 up
+
+# Inside container
+sudo nsenter -t $pid -n ip addr add 10.100.1.3/24 dev veth-c1
+sudo nsenter -t $pid -n ip link set veth-c1 up
+sudo nsenter -t $pid -n ip link set lo up
+```
+
+Then test connectivity to 10.100.1.1 and 10.100.1.2 from inside the container.
+
+---
+
+## 🧯 Cleanup Script
+
+```bash
+sudo ip netns del ns1
+sudo ip netns del ns2
+sudo ip link delete br0
+```
+
+---
+
+✅ You've now completed a fully isolated, bridge-backed networking lab using namespaces and optional containers — perfect for simulating multi-host or cloud-native topologies!

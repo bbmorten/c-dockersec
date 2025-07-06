@@ -1,0 +1,159 @@
+# 📜 PID Namespaces & Containers on Ubuntu 24.04
+
+### 🎓 Teaching Handout + 🥪 Lab Exercise
+
+---
+
+## 👀 Key Concepts
+
+| Term | Description |
+| ---- | ----------- |
+|      |             |
+
+| **PID**               | Process ID, a unique number assigned by the Linux kernel to each process.                           |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| **PID Namespace**     | Isolated process ID space used by containers. PID 1 inside a container is not PID 1 on the host.    |
+| **containerd-shim**   | A small process that supervises a container's lifetime and IO. Starts the container's main process. |
+| **Host vs Container** | Host sees actual kernel PIDs; containers see their own isolated PID tree.                           |
+
+---
+
+## 📀 Visual: Host vs. Container Process Tree
+
+```
+[ Host View ]
+systemd(1)
+ └─ containerd(500)
+      └─ containerd-shim(5200)
+           └─ nginx(5230)
+
+[ Inside Container ]
+PID  USER  COMMAND
+1    root  nginx
+```
+
+- **Host** sees all PIDs (`nginx` = 5230)
+- **Container** sees `nginx` as PID 1
+
+---
+
+## 🥪 Lab: Observe PID Namespace in Action
+
+### 🛠️ Prerequisites
+
+- Ubuntu 24.04
+- Docker or containerd CLI (`docker`, `ctr`)
+- `pstree`, `ps`, `nsenter` installed
+
+---
+
+### 🔹 Step 1: Run a container
+
+```bash
+docker run -d --name demo-nginx nginx sleep 300
+```
+
+Or using containerd:
+
+```bash
+sudo ctr run -d --rm --tty docker.io/library/nginx:latest demo-nginx sleep 300
+```
+
+---
+
+### 🔹 Step 2: Find container PID on the **host**
+
+```bash
+docker inspect --format '{{.State.Pid}}' demo-nginx
+```
+
+Example output:
+
+```
+5230
+```
+
+---
+
+### 🔹 Step 3: Check process tree on host
+
+```bash
+sudo pstree -s -p 5230
+```
+
+Expected output:
+
+```
+systemd(1)
+ └─ containerd-shim(5200)
+      └─ sleep(5230)
+```
+
+---
+
+### 🔹 Step 4: Inspect the container from the inside
+
+```bash
+docker exec -it demo-nginx bash
+ps aux
+```
+
+Expected:
+
+```
+PID  USER  COMMAND
+1    root  sleep 300
+```
+
+---
+
+### 🔹 Step 5: Use `nsenter` to jump into container's PID namespace
+
+```bash
+sudo nsenter -t 5230 -p bash
+```
+
+Now you're inside the container’s PID namespace!
+
+```bash
+ps
+```
+
+Result:
+
+```
+  PID TTY          TIME CMD
+    1 pts/0    00:00:00 sleep
+    7 pts/0    00:00:00 bash
+    8 pts/0    00:00:00 ps
+```
+
+---
+
+### 🔹 Step 6: See PID namespace link
+
+```bash
+ls -l /proc/5230/ns/pid
+```
+
+```bash
+sudo lsns -t pid
+```
+
+---
+
+## ✅ Summary
+
+| View             | Process PID for `sleep` |
+| ---------------- | ----------------------- |
+| Host (`ps`)      | 5230                    |
+| Container (`ps`) | 1                       |
+| Using `nsenter`  | 1                       |
+
+---
+
+## 🤩 Bonus Teaching Question
+
+**Q:** What happens to the container if PID 1 inside it crashes?\
+**A:** The whole container exits, because PID 1 is the init-equivalent process in that namespace.
+

@@ -1,0 +1,122 @@
+# 🧾 Bonus: Linux Bridge Command Cheat Sheet
+
+## 🛠️ Bridge Lifecycle
+
+```bash
+# Create a new bridge
+sudo ip link add name br0 type bridge
+
+# Delete a bridge
+sudo ip link delete br0 type bridge
+
+# Bring bridge up/down
+sudo ip link set dev br0 up
+sudo ip link set dev br0 down
+```
+
+---
+
+## 🔗 Interface Management
+
+```bash
+# Add an interface to a bridge
+sudo ip link set eth1 master br0
+
+# Remove an interface from a bridge
+sudo ip link set eth1 nomaster
+
+# Show interfaces and bridge links
+ip link show
+bridge link
+```
+
+---
+
+## 📶 Address and Routing
+
+```bash
+# Assign an IP address to the bridge
+sudo ip addr add 192.168.1.100/24 dev br0
+
+# View bridge IP config
+ip addr show br0
+```
+
+---
+
+## 🌲 Spanning Tree Protocol (STP)
+
+```bash
+# Enable STP
+sudo ip link set br0 type bridge stp_state 1
+
+# View STP state
+cat /sys/class/net/br0/bridge/stp_state
+bridge -d -s
+```
+
+---
+
+## 🧵 VLAN Filtering
+
+```bash
+# Enable VLAN filtering on bridge
+sudo ip link add br0 type bridge vlan_filtering 1
+
+# Add interface to VLAN
+bridge vlan add dev eth1 vid 10 pvid untagged master
+
+# Show VLAN table
+bridge vlan show
+```
+
+---
+
+## 📡 Monitoring & Debugging
+
+```bash
+# View MAC forwarding table
+bridge fdb show
+
+# Monitor live bridge events
+sudo bridge monitor all
+
+# Capture traffic on bridge
+sudo tcpdump -i br0 -nn -e
+```
+
+---
+
+## 🔒 Security
+
+```bash
+# Drop all non-IP traffic
+sudo ebtables -A FORWARD -p ! IPv4 -j DROP
+
+# Block ARP replies (anti-spoofing)
+sudo ebtables -A FORWARD -p ARP --arp-opcode Reply -j DROP
+
+# Disable promiscuous mode
+sudo ip link set br0 promisc off
+```
+
+---
+
+## 🚀 Performance & Tuning
+
+```bash
+# Set MTU
+sudo ip link set dev br0 mtu 1500
+
+# Disable offloads for benchmarking
+sudo ethtool -K eth0 gro off gso off tso off
+
+# Enable fair queueing (latency optimization)
+sudo tc qdisc add dev br0 root fq
+```
+
+---
+
+✅ Use this cheat sheet alongside your labs for fast reference.
+
+Next up: **Bonus – Advanced Network Namespace Lab with Isolated Bridge Container** 🔬

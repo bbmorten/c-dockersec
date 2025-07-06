@@ -1,0 +1,1321 @@
+# Lab 1: Docker Basics for Developers
+## Objective
+Learn the fundamentals of Docker for development environments, including installation on Ubuntu 24.04, essential commands, and practical examples for building and managing containers.
+
+## Prerequisites
+- Ubuntu 24.04 LTS system
+- Basic command line knowledge
+- sudo privileges
+
+## Installation on Ubuntu 24.04
+
+### 1. Update System and Install Dependencies
+```bash
+sudo apt update
+sudo apt install apt-transport-https ca-certificates curl software-properties-common
+```
+
+### 2. Add Docker's Official GPG Key
+```bash
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+```
+
+### 3. Add Docker Repository
+```bash
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+
+### 4. Install Docker Engine
+```bash
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io
+```
+
+### 5. Add User to Docker Group (Optional but Recommended)
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+### 6. Verify Installation
+```bash
+docker --version
+sudo systemctl status docker
+```
+
+## Essential Docker Commands
+
+### Basic Container Operations
+
+#### 1. Run Your First Container
+```bash
+# Run hello-world to verify installation
+docker run hello-world
+
+# Run Ubuntu container interactively
+docker run -it ubuntu:24.04 /bin/bash
+
+# Run container in detached mode
+docker run -d nginx:latest
+
+# Run with port mapping (host:container)
+docker run -d -p 8080:80 nginx:latest
+```
+
+#### 2. List and Manage Containers
+```bash
+# List running containers
+docker ps
+
+# List all containers (including stopped)
+docker ps -a
+
+# List only container IDs
+docker ps -q
+
+# Stop a running container
+docker stop <container_id_or_name>
+
+# Start a stopped container
+docker start <container_id_or_name>
+
+# Restart a container
+docker restart <container_id_or_name>
+
+# Remove a container
+docker rm <container_id_or_name>
+
+# Force remove a running container
+docker rm -f <container_id_or_name>
+
+# Remove all stopped containers
+docker container prune
+```
+
+### Image Management
+
+#### 3. Working with Images
+```bash
+# List all images
+docker images
+
+# List all images including intermediate
+docker images -a
+
+# Pull an image from Docker Hub
+docker pull ubuntu:24.04
+docker pull node:18-alpine
+
+# Remove an image
+docker rmi <image_id_or_name>
+
+# Remove unused images
+docker image prune
+
+# Remove all unused images
+docker image prune -a
+
+# Search for images on Docker Hub
+docker search nginx
+```
+
+### Container Inspection and Interaction
+
+#### 4. Inspecting Containers
+```bash
+# View container logs
+docker logs <container_id_or_name>
+
+# Follow log output
+docker logs -f <container_id_or_name>
+
+# Inspect container details
+docker inspect <container_id_or_name>
+
+# View container resource usage
+docker stats <container_id_or_name>
+
+# View processes running in container
+docker top <container_id_or_name>
+```
+
+#### 5. Interacting with Containers
+```bash
+# Execute command in running container
+docker exec -it <container_id_or_name> /bin/bash
+
+# Execute single command
+docker exec <container_id_or_name> ls -la
+
+# Copy files between host and container
+docker cp <container_id>:/path/to/file /host/path
+docker cp /host/path <container_id>:/path/to/file
+```
+
+## Building Your First Docker Image
+
+### 6. Create a Simple Web Application
+
+#### Create a project directory
+```bash
+mkdir docker-lab-app
+cd docker-lab-app
+```
+
+#### Create a simple Node.js application
+```bash
+# Create package.json
+cat > package.json << 'EOF'
+{
+  "name": "docker-lab-app",
+  "version": "1.0.0",
+  "description": "Simple Docker lab application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}
+EOF
+
+# Create server.js
+cat > server.js << 'EOF'
+const express = require('express');
+const app = express();
+const port = 3000;
+
+app.get('/', (req, res) => {
+  res.send('Hello Docker! This app is running in a container.');
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`App listening at http://0.0.0.0:${port}`);
+});
+EOF
+```
+
+#### Create Dockerfile
+```bash
+cat > Dockerfile << 'EOF'
+# Use official Node.js runtime as base image
+FROM node:18-alpine
+
+# Set working directory in container
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy application source code
+COPY . .
+
+# Expose port
+EXPOSE 3000
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Define command to run application
+CMD ["npm", "start"]
+EOF
+```
+
+#### Build and run the image
+```bash
+# Build the image
+docker build -t my-node-app:1.0 .
+
+# Run the container
+docker run -d -p 3000:3000 --name my-app my-node-app:1.0
+
+# Test the application
+curl http://localhost:3000
+curl http://localhost:3000/health
+
+# View logs
+docker logs my-app
+
+# Stop and remove
+docker stop my-app
+docker rm my-app
+```
+
+## Advanced Practical Examples
+
+### 7. Working with Volumes
+```bash
+# Create a named volume
+docker volume create my-data
+
+# Run container with volume mount
+docker run -d --name db-container -v my-data:/var/lib/mysql mysql:8.0
+
+# Mount host directory (bind mount)
+docker run -d -v $(pwd)/data:/app/data ubuntu:24.04
+
+# List volumes
+docker volume ls
+
+# Remove volume
+docker volume rm my-data
+```
+
+### 8. Environment Variables and Configuration
+```bash
+# Run with environment variables
+docker run -d -p 8080:80 -e NGINX_HOST=example.com nginx:latest
+
+# Run with environment file
+echo "NODE_ENV=production" > .env
+echo "PORT=3000" >> .env
+docker run --env-file .env my-node-app:1.0
+```
+
+### 9. Container Networking
+```bash
+# Create custom network
+docker network create my-network
+
+# Run containers on custom network
+docker run -d --name web --network my-network nginx:latest
+docker run -d --name db --network my-network mysql:8.0
+
+# List networks
+docker network ls
+
+# Inspect network
+docker network inspect my-network
+```
+
+## Cleanup Commands
+
+### 10. System Cleanup
+```bash
+# Remove all stopped containers
+docker container prune
+
+# Remove all unused images
+docker image prune -a
+
+# Remove all unused volumes
+docker volume prune
+
+# Remove all unused networks
+docker network prune
+
+# Complete system cleanup (use with caution!)
+docker system prune -a --volumes
+
+# Kill all running containers
+docker kill $(docker ps -q)
+
+# Remove all containers
+docker rm $(docker ps -aq)
+```
+
+## Practical Exercises
+
+### Exercise 1: Multi-stage Build
+Create a Dockerfile that uses multi-stage build to create a smaller production image.
+
+#### Solution: Multi-stage Node.js Application
+
+Create a new directory for this exercise:
+```bash
+mkdir multi-stage-app
+cd multi-stage-app
+```
+
+**Step 1: Create the application files**
+
+Create `package.json`:
+```bash
+cat > package.json << 'EOF'
+{
+  "name": "multi-stage-app",
+  "version": "1.0.0",
+  "description": "Multi-stage build example",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node src/server.ts"
+  },
+  "dependencies": {
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0"
+  }
+}
+EOF
+```
+
+Create TypeScript configuration `tsconfig.json`:
+```bash
+cat > tsconfig.json << 'EOF'
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+EOF
+```
+
+Create source directory and application:
+```bash
+mkdir src
+cat > src/server.ts << 'EOF'
+import express from 'express';
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Hello from Multi-stage Docker Build!',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy' });
+});
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+EOF
+```
+
+**Step 2: Create Multi-stage Dockerfile**
+
+```bash
+cat > Dockerfile << 'EOF'
+# Build stage
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install all dependencies (including dev dependencies)
+RUN npm ci
+
+# Copy source code
+COPY src/ ./src/
+
+# Build the application
+RUN npm run build
+
+# Production stage
+FROM node:18-alpine AS production
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --only=production && npm cache clean --force
+
+# Copy built application from builder stage
+COPY --from=builder /app/dist ./dist
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001
+
+# Change ownership of the app directory
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# Expose port
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+# Start the application
+CMD ["npm", "start"]
+EOF
+```
+
+**Step 3: Build and test the multi-stage image**
+
+```bash
+# Build the image
+docker build -t multi-stage-app:latest .
+
+# Check image sizes (compare with single-stage build)
+docker images | grep multi-stage-app
+
+# Run the container
+docker run -d -p 3000:3000 --name multi-stage-test multi-stage-app:latest
+
+# Test the application
+curl http://localhost:3000
+curl http://localhost:3000/health
+
+# Check container size
+docker exec multi-stage-test du -sh /app
+
+# Cleanup
+docker stop multi-stage-test
+docker rm multi-stage-test
+```
+
+### Exercise 2: Docker Compose
+Create a docker-compose.yml file to run a web application with a database.
+
+#### Solution: Full-Stack Application with Database
+
+Create a new directory for this exercise:
+```bash
+mkdir compose-app
+cd compose-app
+```
+
+**Step 1: Create the web application**
+
+Create the application structure:
+```bash
+mkdir app
+cd app
+
+# Create package.json
+cat > package.json << 'EOF'
+{
+  "name": "compose-web-app",
+  "version": "1.0.0",
+  "description": "Docker Compose web app with database",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "mysql2": "^3.6.0"
+  }
+}
+EOF
+
+# Create the web server
+cat > server.js << 'EOF'
+const express = require('express');
+const mysql = require('mysql2/promise');
+
+const app = express();
+const port = 3000;
+
+// Middleware
+app.use(express.json());
+app.use(express.static('public'));
+
+// Database connection configuration
+const dbConfig = {
+  host: process.env.DB_HOST || 'database',
+  user: process.env.DB_USER || 'appuser',
+  password: process.env.DB_PASSWORD || 'apppassword',
+  database: process.env.DB_NAME || 'appdb',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+};
+
+let db;
+
+// Initialize database connection
+async function initDB() {
+  try {
+    db = await mysql.createPool(dbConfig);
+    
+    // Create users table if it doesn't exist
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    console.log('Database connected and initialized');
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    setTimeout(initDB, 5000); // Retry after 5 seconds
+  }
+}
+
+// Routes
+app.get('/', (req, res) => {
+  res.send(`
+    <html>
+      <head><title>Docker Compose App</title></head>
+      <body>
+        <h1>Docker Compose Web Application</h1>
+        <h2>Add User</h2>
+        <form action="/users" method="post">
+          <input type="text" name="name" placeholder="Name" required><br><br>
+          <input type="email" name="email" placeholder="Email" required><br><br>
+          <button type="submit">Add User</button>
+        </form>
+        <h2>Users</h2>
+        <div id="users"></div>
+        <script>
+          fetch('/api/users')
+            .then(r => r.json())
+            .then(users => {
+              document.getElementById('users').innerHTML = users.map(u => 
+                '<p>' + u.name + ' (' + u.email + ') - ' + u.created_at + '</p>'
+              ).join('');
+            });
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+app.get('/api/users', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT * FROM users ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.post('/users', express.urlencoded({ extended: true }), async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    await db.execute('INSERT INTO users (name, email) VALUES (?, ?)', [name, email]);
+    res.redirect('/');
+  } catch (error) {
+    res.status(500).send('Error adding user: ' + error.message);
+  }
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+// Start server
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server running on port ${port}`);
+});
+
+// Initialize database connection
+initDB();
+EOF
+
+# Create Dockerfile for the web app
+cat > Dockerfile << 'EOF'
+FROM node:18-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
+CMD ["npm", "start"]
+EOF
+
+cd .. # Go back to compose-app directory
+```
+
+**Step 2: Create Docker Compose configuration**
+
+```bash
+cat > docker-compose.yml << 'EOF'
+version: '3.8'
+
+services:
+  # Web application service
+  web:
+    build: 
+      context: ./app
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=database
+      - DB_USER=appuser
+      - DB_PASSWORD=apppassword
+      - DB_NAME=appdb
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+  # MySQL database service
+  database:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=appdb
+      - MYSQL_USER=appuser
+      - MYSQL_PASSWORD=apppassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 10s
+      start_period: 40s
+
+  # PHPMyAdmin for database management (optional)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    environment:
+      - PMA_HOST=database
+      - PMA_PORT=3306
+      - PMA_USER=root
+      - PMA_PASSWORD=rootpassword
+    ports:
+      - "8080:80"
+    depends_on:
+      - database
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
+EOF
+```
+
+**Step 3: Create database initialization script**
+
+```bash
+cat > init.sql << 'EOF'
+-- Database initialization script
+USE appdb;
+
+-- Create additional tables or seed data if needed
+INSERT INTO users (name, email) VALUES 
+  ('John Doe', 'john@example.com'),
+  ('Jane Smith', 'jane@example.com'),
+  ('Bob Johnson', 'bob@example.com');
+EOF
+```
+
+**Step 4: Create additional configuration files**
+
+```bash
+# Create logs directory
+mkdir logs
+
+# Create .env file for environment variables
+cat > .env << 'EOF'
+# Database Configuration
+MYSQL_ROOT_PASSWORD=rootpassword
+MYSQL_DATABASE=appdb
+MYSQL_USER=appuser
+MYSQL_PASSWORD=apppassword
+
+# Application Configuration
+NODE_ENV=production
+EOF
+
+# Create docker-compose override for development
+cat > docker-compose.override.yml << 'EOF'
+version: '3.8'
+
+services:
+  web:
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm start"
+    
+  database:
+    ports:
+      - "3306:3306"  # Expose MySQL port for development tools
+EOF
+```
+
+**Step 5: Run and test the application**
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Check service status
+docker-compose ps
+
+# View logs
+docker-compose logs -f web
+docker-compose logs database
+
+# Test the application
+curl http://localhost:3000
+curl http://localhost:3000/api/users
+
+# Access PHPMyAdmin at http://localhost:8080
+
+# Scale the web service (if needed)
+docker-compose up -d --scale web=2
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (destructive)
+docker-compose down -v
+```
+
+### Exercise 3: Custom Network
+Set up containers that communicate with each other using custom networks.
+
+#### Solution: Microservices Communication
+
+Create a new directory for this exercise:
+```bash
+mkdir network-demo
+cd network-demo
+```
+
+**Step 1: Create multiple services**
+
+Create the API service:
+```bash
+mkdir api-service
+cd api-service
+
+cat > package.json << 'EOF'
+{
+  "name": "api-service",
+  "version": "1.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.18.0",
+    "axios": "^1.5.0"
+  }
+}
+EOF
+
+cat > server.js << 'EOF'
+const express = require('express');
+const axios = require('axios');
+
+const app = express();
+const port = 3001;
+
+app.use(express.json());
+
+// Service discovery
+const services = {
+  user: process.env.USER_SERVICE_URL || 'http://user-service:3002',
+  order: process.env.ORDER_SERVICE_URL || 'http://order-service:3003'
+};
+
+app.get('/', (req, res) => {
+  res.json({
+    service: 'API Gateway',
+    version: '1.0.0',
+    endpoints: ['/users', '/orders', '/health']
+  });
+});
+
+app.get('/users', async (req, res) => {
+  try {
+    const response = await axios.get(`${services.user}/users`);
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: 'User service unavailable' });
+  }
+});
+
+app.get('/orders', async (req, res) => {
+  try {
+    const response = await axios.get(`${services.order}/orders`);
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: 'Order service unavailable' });
+  }
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', service: 'api-gateway' });
+});
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`API Gateway running on port ${port}`);
+});
+EOF
+
+cat > Dockerfile << 'EOF'
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3001
+CMD ["node", "server.js"]
+EOF
+
+cd .. # Back to network-demo
+```
+
+Create the User service:
+```bash
+mkdir user-service
+cd user-service
+
+cat > package.json << 'EOF'
+{
+  "name": "user-service",
+  "version": "1.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}
+EOF
+
+cat > server.js << 'EOF'
+const express = require('express');
+const app = express();
+const port = 3002;
+
+app.use(express.json());
+
+// Mock user data
+const users = [
+  { id: 1, name: 'Alice', email: 'alice@example.com' },
+  { id: 2, name: 'Bob', email: 'bob@example.com' },
+  { id: 3, name: 'Charlie', email: 'charlie@example.com' }
+];
+
+app.get('/', (req, res) => {
+  res.json({ service: 'User Service', version: '1.0.0' });
+});
+
+app.get('/users', (req, res) => {
+  res.json(users);
+});
+
+app.get('/users/:id', (req, res) => {
+  const user = users.find(u => u.id === parseInt(req.params.id));
+  if (user) {
+    res.json(user);
+  } else {
+    res.status(404).json({ error: 'User not found' });
+  }
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', service: 'user-service' });
+});
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`User Service running on port ${port}`);
+});
+EOF
+
+cat > Dockerfile << 'EOF'
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3002
+CMD ["node", "server.js"]
+EOF
+
+cd .. # Back to network-demo
+```
+
+Create the Order service:
+```bash
+mkdir order-service
+cd order-service
+
+cat > package.json << 'EOF'
+{
+  "name": "order-service",
+  "version": "1.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.18.0",
+    "axios": "^1.5.0"
+  }
+}
+EOF
+
+cat > server.js << 'EOF'
+const express = require('express');
+const axios = require('axios');
+const app = express();
+const port = 3003;
+
+app.use(express.json());
+
+const userServiceUrl = process.env.USER_SERVICE_URL || 'http://user-service:3002';
+
+// Mock order data
+const orders = [
+  { id: 1, userId: 1, product: 'Laptop', amount: 999.99 },
+  { id: 2, userId: 2, product: 'Mouse', amount: 25.99 },
+  { id: 3, userId: 1, product: 'Keyboard', amount: 75.99 }
+];
+
+app.get('/', (req, res) => {
+  res.json({ service: 'Order Service', version: '1.0.0' });
+});
+
+app.get('/orders', async (req, res) => {
+  try {
+    // Enrich orders with user data
+    const enrichedOrders = await Promise.all(
+      orders.map(async (order) => {
+        try {
+          const userResponse = await axios.get(`${userServiceUrl}/users/${order.userId}`);
+          return { ...order, user: userResponse.data };
+        } catch (error) {
+          return { ...order, user: null };
+        }
+      })
+    );
+    res.json(enrichedOrders);
+  } catch (error) {
+    res.json(orders);
+  }
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', service: 'order-service' });
+});
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Order Service running on port ${port}`);
+});
+EOF
+
+cat > Dockerfile << 'EOF'
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3003
+CMD ["node", "server.js"]
+EOF
+
+cd .. # Back to network-demo
+```
+
+**Step 2: Manual Network Setup (Command Line Approach)**
+
+```bash
+# Create custom networks
+docker network create --driver bridge frontend-network
+docker network create --driver bridge backend-network
+
+# Build all images
+docker build -t api-service ./api-service
+docker build -t user-service ./user-service
+docker build -t order-service ./order-service
+
+# Run backend services on backend network
+docker run -d --name user-service --network backend-network user-service
+docker run -d --name order-service --network backend-network order-service
+
+# Run API gateway on both networks (to communicate with both frontend and backend)
+docker run -d --name api-gateway -p 3001:3001 api-service
+docker network connect backend-network api-gateway
+docker network connect frontend-network api-gateway
+
+# Test connectivity
+docker exec api-gateway ping -c 3 user-service
+docker exec api-gateway ping -c 3 order-service
+
+# Test the API
+curl http://localhost:3001/
+curl http://localhost:3001/users
+curl http://localhost:3001/orders
+
+# Inspect networks
+docker network inspect frontend-network
+docker network inspect backend-network
+
+# Cleanup
+docker stop api-gateway user-service order-service
+docker rm api-gateway user-service order-service
+docker network rm frontend-network backend-network
+```
+
+**Step 3: Docker Compose Approach (Recommended)**
+
+```bash
+cat > docker-compose.yml << 'EOF'
+version: '3.8'
+
+services:
+  api-gateway:
+    build: ./api-service
+    ports:
+      - "3001:3001"
+    environment:
+      - USER_SERVICE_URL=http://user-service:3002
+      - ORDER_SERVICE_URL=http://order-service:3003
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      - user-service
+      - order-service
+
+  user-service:
+    build: ./user-service
+    networks:
+      - backend
+    # Internal service - no external ports
+
+  order-service:
+    build: ./order-service
+    environment:
+      - USER_SERVICE_URL=http://user-service:3002
+    networks:
+      - backend
+    depends_on:
+      - user-service
+
+  # Optional: Add a reverse proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - frontend
+    depends_on:
+      - api-gateway
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true  # Backend network isolated from external access
+
+volumes: {}
+EOF
+```
+
+**Step 4: Create nginx configuration**
+
+```bash
+cat > nginx.conf << 'EOF'
+events {
+    worker_connections 1024;
+}
+
+http {
+    upstream api {
+        server api-gateway:3001;
+    }
+
+    server {
+        listen 80;
+        server_name localhost;
+
+        location / {
+            proxy_pass http://api;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        }
+    }
+}
+EOF
+```
+
+**Step 5: Test the network setup**
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Check network configuration
+docker-compose ps
+docker network ls
+
+# Test internal communication
+docker-compose exec api-gateway ping -c 3 user-service
+docker-compose exec order-service ping -c 3 user-service
+
+# Test external access
+curl http://localhost/
+curl http://localhost/users
+curl http://localhost/orders
+
+# View network details
+docker network inspect network-demo_frontend
+docker network inspect network-demo_backend
+
+# Check which containers are on which networks
+docker inspect $(docker-compose ps -q) | grep -A 5 "NetworkMode\|Networks"
+
+# Scale services
+docker-compose up -d --scale user-service=2
+
+# Cleanup
+docker-compose down
+docker-compose down --volumes  # Remove volumes too
+```
+
+## Troubleshooting Common Issues
+
+### Permission Denied
+```bash
+# If you get permission denied errors
+sudo chmod 666 /var/run/docker.sock
+# Or add user to docker group (recommended)
+sudo usermod -aG docker $USER
+```
+
+### Container Won't Start
+```bash
+# Check logs for errors
+docker logs <container_name>
+
+# Inspect container configuration
+docker inspect <container_name>
+```
+
+### Port Already in Use
+```bash
+# Check what's using the port
+sudo netstat -tulpn | grep :8080
+
+# Kill process using the port
+sudo kill -9 <process_id>
+```
+## Resources and References
+
+### Official Documentation
+- [Docker Documentation](https://docs.docker.com/)
+- [Docker CLI Reference](https://docs.docker.com/engine/reference/commandline/cli/)
+- [Dockerfile Best Practices](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)
+- [Docker Security Best Practices](https://docs.docker.com/engine/security/security/)
+
+### Essential Guides
+- [Docker Installation on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+- [Docker Post-Installation Steps](https://docs.docker.com/engine/install/linux-postinstall/)
+- [Docker Networking Overview](https://docs.docker.com/network/)
+- [Docker Volumes Documentation](https://docs.docker.com/storage/volumes/)
+- [Docker Health Checks](https://docs.docker.com/engine/reference/builder/#healthcheck)
+
+### Cheat Sheets and Quick References
+- [Ultimate Docker Cheat Sheet](https://dockerlabs.collabnix.com/docker/cheatsheet/)
+- [Docker Compose Documentation](https://docs.docker.com/compose/)
+- [Docker Compose CLI Reference](https://docs.docker.com/compose/reference/)
+- [Docker Compose File Reference](https://docs.docker.com/compose/compose-file/)
+
+### Community Resources
+- [Docker Hub](https://hub.docker.com/)
+- [DockerLabs Community](https://dockerlabs.collabnix.com/)
+- [Docker Community Forums](https://forums.docker.com/)
+- [Docker Blog](https://www.docker.com/blog/)
+
+### Advanced Topics for Further Learning
+- [Docker Swarm Documentation](https://docs.docker.com/engine/swarm/)
+- [Docker Registry Documentation](https://docs.docker.com/registry/)
+- [Docker Logging Documentation](https://docs.docker.com/config/containers/logging/configure/)
+- [Docker Compose Best Practices](https://docs.docker.com/compose/best-practices/)
+- [Docker Scout Security Scanning](https://docs.docker.com/scout/)
+
+### Ubuntu 24.04 Specific Resources
+- [Ubuntu Server Guide - Docker](https://ubuntu.com/server/docs/containers-docker)
+- [Snap Package for Docker](https://snapcraft.io/docker)
+- [Ubuntu Docker Installation Troubleshooting](https://help.ubuntu.com/community/Docker)
+
+## Next Steps
+After completing this lab, proceed to:
+- Lab 2: Docker Compose and Multi-container Applications
+- Lab 3: Docker Security Fundamentals
+- Lab 4: Container Orchestration with Docker Swarm
+
+## Quick Command Reference Card
+
+```bash
+# Installation
+sudo apt update && sudo apt install docker.io
+sudo usermod -aG docker $USER
+
+# Basic Operations
+docker run -it ubuntu:24.04          # Interactive container
+docker run -d -p 8080:80 nginx       # Detached with port mapping
+docker ps                            # List running containers
+docker ps -a                         # List all containers
+docker stop <container>              # Stop container
+docker rm <container>                # Remove container
+
+# Images
+docker images                        # List images
+docker pull <image>                  # Pull image
+docker rmi <image>                   # Remove image
+docker build -t <name> .             # Build from Dockerfile
+
+# Logs & Debugging
+docker logs <container>              # View logs
+docker exec -it <container> bash     # Access container shell
+docker inspect <container>           # Detailed info
+
+# Cleanup
+docker system prune                  # Clean unused resources
+docker container prune               # Remove stopped containers
+docker image prune                   # Remove unused images
+```

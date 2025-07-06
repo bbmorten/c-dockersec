@@ -1,0 +1,149 @@
+# 🧠 Lesson 11: VLAN Filtering on Linux Bridges
+
+## 🎯 Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+- Configure VLAN filtering on Linux bridges
+- Understand tagged vs untagged VLAN modes
+- Use VLANs to segment network traffic within a bridge
+
+---
+
+## 🧵 What is VLAN Filtering?
+
+VLAN filtering allows a Linux bridge to handle and enforce **IEEE 802.1Q VLAN tags**, enabling traffic segmentation across a shared physical or virtual interface.
+
+### Why Use It?
+
+- Enforce isolation between tenants or services
+- Separate control and data planes
+- Reduce broadcast domains
+
+---
+
+## 🔧 Enabling VLAN Filtering
+
+### Step 1: Create Bridge with VLAN Filtering
+
+```bash
+sudo ip link add name br0 type bridge vlan_filtering 1
+sudo ip link set dev br0 up
+```
+
+### Step 2: Add Physical/Virtual Interfaces
+
+```bash
+sudo ip link set eth1 master br0
+sudo ip link set eth1 up
+```
+
+### Step 3: Define VLAN Membership
+
+```bash
+# Assign eth1 to VLAN 10 (untagged)
+bridge vlan add dev eth1 vid 10 pvid untagged master
+
+# Add br0 to VLAN 10 (tagged trunk port)
+bridge vlan add dev br0 vid 10 self
+```
+
+---
+
+## 🧪 Hands-on Lab: Isolated VLANs on One Bridge
+
+### Create Namespaces for Two Tenants
+
+```bash
+sudo ip netns add ns1
+sudo ip netns add ns2
+```
+
+### Add veth Pairs and Bridge
+
+```bash
+# For ns1 (VLAN 10)
+sudo ip link add veth-ns1 type veth peer name veth-br1
+sudo ip link set veth-ns1 netns ns1
+sudo ip link set veth-br1 master br0
+sudo ip link set veth-br1 up
+bridge vlan add dev veth-br1 vid 10 pvid untagged master
+
+# For ns2 (VLAN 20)
+sudo ip link add veth-ns2 type veth peer name veth-br2
+sudo ip link set veth-ns2 netns ns2
+sudo ip link set veth-br2 master br0
+sudo ip link set veth-br2 up
+bridge vlan add dev veth-br2 vid 20 pvid untagged master
+```
+
+### Assign IPs and Test Isolation
+
+```bash
+# Inside ns1
+sudo ip netns exec ns1 ip addr add 192.168.10.2/24 dev veth-ns1
+sudo ip netns exec ns1 ip link set veth-ns1 up
+sudo ip netns exec ns1 ip link set lo up
+
+# Inside ns2
+sudo ip netns exec ns2 ip addr add 192.168.20.2/24 dev veth-ns2
+sudo ip netns exec ns2 ip link set veth-ns2 up
+sudo ip netns exec ns2 ip link set lo up
+
+# Test ping isolation
+sudo ip netns exec ns1 ping -c 2 192.168.20.2  # should fail
+```
+
+---
+
+## 📊 Show VLAN Configuration
+
+```bash
+bridge vlan show
+```
+
+---
+
+## 🖼️ Diagram: VLAN-Tagged Bridge
+
+```
+[ veth-br1 ] (VLAN 10) ┐
+                       │
+                     [ br0 ]
+                       │
+[ veth-br2 ] (VLAN 20) ┘
+```
+
+---
+
+## ❓ Review Questions
+
+1. What flag enables VLAN filtering on a bridge?
+2. What does `pvid` mean in VLAN config?
+3. How do you verify current bridge VLAN settings?
+
+### ✅ Answers
+
+1. `vlan_filtering 1`
+2. PVID = Port VLAN ID, the default VLAN for untagged ingress traffic
+3. `bridge vlan show`
+
+---
+
+## 🧯 Troubleshooting Tips
+
+| Symptom | Cause | Fix |
+|--------|--------|-----|
+| Interfaces communicate across VLANs | No VLAN filtering | Enable with `vlan_filtering 1` |
+| Ping between namespaces works when it shouldn’t | VLANs not set correctly | Use `bridge vlan show` to verify VID assignments |
+| No traffic on VLAN | PVID mismatch | Ensure correct PVID on ingress port |
+
+---
+
+## 🌐 Real-World Example
+
+VLAN filtering is commonly used in **multi-tenant clouds** and **enterprise labs** to simulate separate networks while using a shared Linux bridge — perfect for Docker, Podman, and virtual labs.
+
+---
+
+Next up: **Lesson 12 – Monitoring Bridge Traffic** 📈

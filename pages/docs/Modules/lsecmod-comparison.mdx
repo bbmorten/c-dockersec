@@ -1,0 +1,85 @@
+---
+title: Linux Security Modules Comparison
+description: A detailed comparison of Linux security modules including AppArmor, SELinux, TOMOYO, GRSEC, and PaX, covering their design models, popularity, and support across distributions.
+---
+# Linux Security Modules Comparison
+
+Here's a comprehensive comparison of **TOMOYO**, **AppArmor**, **SELinux**, **GRSEC**, and **PaX** — all of which are Linux security modules or frameworks that enforce Mandatory Access Control (MAC) or harden the kernel.
+
+---
+
+## 🔒 Overview
+
+| Name         | Type                              | Kernel Integration | Description                                                  |
+| ------------ | --------------------------------- | ------------------ | ------------------------------------------------------------ |
+| **AppArmor** | MAC (Path-based)                  | Mainline (2.6.36+) | Easy to configure, profile-based MAC focused on applications |
+| **SELinux**  | MAC (Label-based)                 | Mainline (2.6+)    | Granular, powerful, policy-driven MAC used by Red Hat        |
+| **TOMOYO**   | MAC (Path-based, whitelist)       | Mainline (2.6.30+) | Profile-based, human-readable policies; less popular         |
+| **GRSEC**    | Kernel hardening + RBAC           | ✘ Mainline         | Full kernel hardening suite; closed-source since 2017        |
+| **PaX**      | Memory protection (part of GRSEC) | ✘ Mainline         | ASLR, NX, memory access control features; now legacy         |
+
+---
+
+## 🧠 Design Model Comparison
+
+| Feature/Model    | **AppArmor**         | **SELinux**             | **TOMOYO**                 | **GRSEC** (w/ PaX)      |
+| ---------------- | -------------------- | ----------------------- | -------------------------- | ----------------------- |
+| Model            | Path-based MAC       | Label-based MAC         | Whitelist Path-based MAC   | RBAC + kernel hardening |
+| Ease of Use      | ✅ Easy               | ❌ Complex               | ⚠️ Moderate                | ❌ Very complex          |
+| Logging/Auditing | Good                 | Very good               | Good                       | Extensive               |
+| Learning Mode    | Yes                  | Yes                     | Yes                        | No                      |
+| Default Policy   | Confined by profile  | Everything confined     | Whitelisting starts from 0 | Not applicable          |
+| Maintenance      | Active (Ubuntu/SUSE) | Active (Red Hat/Fedora) | Minimal                    | Abandoned (public)      |
+
+---
+
+## 🧯 Obsolescence / Popularity Status
+
+| Project      | Active?              | Popularity                    | Notes                                                     |
+| ------------ | -------------------- | ----------------------------- | --------------------------------------------------------- |
+| **AppArmor** | ✅ Active             | High in SUSE, Ubuntu          | Preferred for ease of use                                 |
+| **SELinux**  | ✅ Active             | High in RHEL, Fedora, Android | Mandatory in Red Hat ecosystem                            |
+| **TOMOYO**   | ⚠️ Minimal           | Low (niche, Japan-centric)    | Mostly academic/experimental                              |
+| **GRSEC**    | ❌ Abandoned (public) | Low                           | Went private in 2017; no longer available                 |
+| **PaX**      | ❌ Abandoned          | Low                           | No longer maintained separately after GRSEC privatization |
+
+---
+
+## 🧪 Support Matrix by Linux Distribution
+
+| Distribution | **AppArmor**         | **SELinux**        | **TOMOYO**              | **GRSEC/PaX**                      |
+| ------------ | -------------------- | ------------------ | ----------------------- | ---------------------------------- |
+| **Ubuntu**   | ✅ Enabled by default | ❌ Optional         | ❌                       | ❌                                  |
+| **Debian**   | ✅ (opt-in)           | ✅ (opt-in)         | ⚠️ Available but unused | ❌                                  |
+| **Fedora**   | ❌                    | ✅ Default          | ❌                       | ❌                                  |
+| **RHEL**     | ❌                    | ✅ Default          | ❌                       | ❌                                  |
+| **SUSE**     | ✅ Default            | ✅ (opt-in)         | ❌                       | ❌                                  |
+| **Arch**     | ✅ (opt-in)           | ✅ (opt-in)         | ⚠️ PKGBUILD available   | ⚠️ Used by hardened kernels (AUR)  |
+| **Alpine**   | ❌                    | ✅ (optional)       | ❌                       | ❌                                  |
+| **Gentoo**   | ✅ / SELinux profiles | ✅ (strong support) | ⚠️                      | ⚠️ Can be used with custom kernels |
+| **Android**  | ❌                    | ✅ Mandatory        | ❌                       | ❌                                  |
+| **Kali**     | ✅ (lightweight)      | ❌                  | ❌                       | ❌                                  |
+| **Qubes OS** | ✅ (Fedora templates) | ✅                  | ❌                       | ❌                                  |
+
+> ⚠️ = Available but not default or not commonly used.
+
+---
+
+## 📝 Recommendations
+
+| Use Case                          | Recommended Tool                      | Why                                    |
+| --------------------------------- | ------------------------------------- | -------------------------------------- |
+| Desktop Linux (Ubuntu/SUSE)       | **AppArmor**                          | Simple, works out-of-the-box           |
+| Enterprise / Server (RHEL/Fedora) | **SELinux**                           | Granular and well-integrated           |
+| Academic / experimental sandbox   | **TOMOYO**                            | Easy to explore with readable policies |
+| Hardened custom kernel (DIY)      | **GRSEC + PaX (if patched manually)** | Advanced kernel hardening (legacy)     |
+
+---
+
+## 🧹 Conclusion
+
+* **AppArmor** and **SELinux** are the only **actively maintained and widely adopted** solutions.
+* **TOMOYO** is in **maintenance mode**, rarely used outside niche environments.
+* **GRSEC/PaX** are effectively **obsolete for public use**, though some hardened Gentoo or custom kernel projects may still maintain unofficial patches.
+* Kernel developments like **LSM stacking** (Linux 5.1+) now allow combining multiple LSMs, e.g., AppArmor + BPF-based LSMs.
+

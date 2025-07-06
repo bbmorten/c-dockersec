@@ -1,0 +1,149 @@
+# 🧠 Lesson 3: Creating and Managing Linux Bridges
+
+## 🎯 Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+- Create and inspect Linux bridges using `ip` and `bridge` commands
+- Manage bridge lifecycle (create, delete, enable, disable)
+- Understand basic bridge properties
+
+---
+
+## 🛠️ Creating a Linux Bridge
+
+Linux bridges are created using modern tools: `ip` and `bridge`. Avoid using the deprecated `brctl`.
+
+### 🔧 Create a New Bridge Interface
+
+```bash
+sudo ip link add name br0 type bridge
+```
+
+### 🚀 Bring the Bridge Interface Up
+
+```bash
+sudo ip link set dev br0 up
+```
+
+### 🧼 Delete a Bridge
+
+```bash
+sudo ip link delete br0 type bridge
+```
+
+---
+
+## 🔍 Inspecting a Linux Bridge
+
+### List All Interfaces
+
+```bash
+ip link show
+```
+
+### Check Bridge Status
+
+```bash
+bridge link show
+bridge vlan
+bridge -s
+```
+
+### View Bridge Interface Details
+
+```bash
+ip addr show br0
+```
+
+---
+
+## 🧪 Hands-on Lab: Create and Inspect a Bridge
+
+### Step-by-Step on Ubuntu 24.04
+
+```bash
+# Install tools (if not already installed)
+sudo apt update
+sudo apt install iproute2 bridge-utils -y
+
+# Create bridge
+sudo ip link add name br0 type bridge
+
+# Bring it up
+sudo ip link set br0 up
+
+# Inspect bridge
+ip link show br0
+bridge link
+bridge vlan
+
+# Clean up
+sudo ip link delete br0 type bridge
+```
+
+### 💡 Optional: Persistent Bridge (via Netplan)
+
+Create `/etc/netplan/01-bridge.yaml`:
+
+```yaml
+network:
+  version: 2
+  renderer: networkd
+  bridges:
+    br0:
+      dhcp4: yes
+      interfaces: [eth0]
+```
+
+Then apply it:
+
+```bash
+sudo netplan apply
+```
+
+---
+
+## 🖼️ Conceptual Diagram (ASCII)
+
+```
+[ eth0 ]        [ eth1 ]
+    |               |
+    |               |
+     \             /
+      [ br0 - Linux Bridge ]
+```
+
+---
+
+## ❓ Review Questions
+
+1. What command creates a bridge named `br0`?
+2. How do you check which interfaces are part of a bridge?
+3. What file do you edit to make a bridge persistent with Netplan?
+
+### ✅ Answers
+
+1. `sudo ip link add name br0 type bridge`
+2. `bridge link`
+3. `/etc/netplan/01-bridge.yaml`
+
+---
+
+## 🧯 Troubleshooting Tips
+
+| Symptom | Cause | Solution |
+|--------|--------|----------|
+| Bridge doesn’t show up | Not brought up | `sudo ip link set br0 up` |
+| Deleted by reboot | Not configured persistently | Use Netplan or systemd-networkd |
+| Bridge doesn’t pass traffic | No interfaces added | See next lesson on adding interfaces |
+
+---
+
+## 🌐 Real-World Example
+
+On a virtualization server using **libvirt**, creating a `br0` bridge and adding `eth0` to it allows VMs to share the host’s NIC as if they were directly plugged into the network.
+
+---
+
+Next up: **Lesson 4 - Adding Interfaces to a Linux Bridge** 🔗

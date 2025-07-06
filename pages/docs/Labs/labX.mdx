@@ -1,0 +1,20 @@
+# Misc
+
+## finding the package of ping command in Ubuntu 24.04
+
+
+```shell
+vm@DS-STD15:~/labs$ which ping
+/usr/bin/ping
+vm@DS-STD15:~/labs$ dpkg -S /usr/bin/ping
+iputils-ping: /usr/bin/ping
+```
+
+
+
+
+```shell
+
+docker run -it --rm --name ubu1 192.168.48.42:5000/ubuntu /bin/bash
+apt update -y && apt install -y iputils-ping
+```

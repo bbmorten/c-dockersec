@@ -1,0 +1,109 @@
+# 🧩 Bonus: Lab Environment Setup Guide
+
+## 🎯 Goal
+
+Set up a lightweight, reproducible environment on Ubuntu 24.04 for testing Linux bridge features without special hardware.
+
+---
+
+## 🖥️ System Requirements
+
+| Component | Minimum Requirement |
+|----------|---------------------|
+| OS       | Ubuntu 24.04 LTS    |
+| RAM      | 2 GB                |
+| CPU      | 1 vCPU              |
+| Storage  | 10 GB free          |
+| Network  | At least 1 NIC (real or virtual) |
+
+---
+
+## 📦 Required Packages
+
+```bash
+sudo apt update
+sudo apt install -y \
+  iproute2 \
+  bridge-utils \
+  net-tools \
+  tcpdump \
+  ebtables \
+  ethtool \
+  iputils-ping \
+  virt-manager \
+  qemu-kvm \
+  libvirt-daemon-system \
+  openvswitch-switch \
+  containernetworking-plugins \
+  podman \
+  docker.io \
+  nload \
+  bmon
+```
+
+---
+
+## 🛠️ Enable Required Kernel Modules
+
+```bash
+# Load bridge module
+sudo modprobe bridge
+
+# Load bonding (for HA labs)
+sudo modprobe bonding
+
+# Ensure modules load on boot
+echo bridge | sudo tee -a /etc/modules
+```
+
+---
+
+## 🧪 Test Your Setup
+
+### 1. Create a test bridge
+
+```bash
+sudo ip link add br0 type bridge
+sudo ip link set br0 up
+```
+
+### 2. Check status
+
+```bash
+ip link show br0
+bridge link show
+```
+
+---
+
+## 🧰 Tools Summary
+
+| Tool      | Purpose                      |
+|-----------|------------------------------|
+| `ip`      | Interface and bridge control |
+| `bridge`  | VLAN, STP, FDB management    |
+| `tcpdump` | Packet inspection            |
+| `ebtables`| Layer 2 filtering            |
+| `ethtool` | NIC offload tuning           |
+| `virt-manager` | GUI for KVM setup        |
+| `docker/podman` | Container bridge testing |
+
+---
+
+## 🧼 Optional: Create a Disposable Playground
+
+Using namespaces:
+
+```bash
+sudo ip netns add ns1
+sudo ip link add veth0 type veth peer name veth1
+sudo ip link set veth0 netns ns1
+sudo ip link set veth1 up
+sudo ip netns exec ns1 ip link set veth0 up
+```
+
+---
+
+✅ You’re ready to start experimenting with Linux bridges in a clean, powerful lab.
+
+Next up: **Bonus – Linux Bridge Command Cheat Sheet** 🧾

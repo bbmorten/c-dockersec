@@ -1,0 +1,35 @@
+# [Nicolaka Netshoot](https://github.com/nicolaka/netshoot)
+
+
+## nginx and tcpdump with netshoot
+
+
+Make a directory for the data to be saved and change to it:
+
+
+```shell
+mkdir -p /home/vm/dockersec-labs/nicolaka-netshoot/data
+cd /home/vm/dockersec-labs/nicolaka-netshoot
+```
+
+```shell
+docker compose up -d
+```
+
+
+```yaml filename="docker-compose.yml"
+services:
+  tcpdump:
+    image: 192.168.48.42:5000/nicolaka/netshoot
+    depends_on:
+      - nginx
+    command: tcpdump -i eth0 -w /data/nginx.pcap
+    network_mode: service:nginx
+    volumes:
+      - /home/vm/dockersec-labs/nicolaka-netshoot/data:/data
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - 8085:80
+```

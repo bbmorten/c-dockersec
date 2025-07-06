@@ -1,0 +1,130 @@
+# 🧠 Lesson 4: Adding Interfaces to a Linux Bridge
+
+## 🎯 Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+- Add physical or virtual interfaces to a Linux bridge
+- Manage interface states and ensure proper connectivity
+- Understand interface role in traffic forwarding
+
+---
+
+## 🔗 Adding Interfaces to a Bridge
+
+### Basic Syntax
+
+```bash
+sudo ip link set eth1 master br0
+```
+
+> This command assigns `eth1` to the bridge `br0`.
+
+### Multiple Interfaces
+
+```bash
+sudo ip link set eth1 master br0
+sudo ip link set eth2 master br0
+```
+
+### Bring Interfaces Up
+
+```bash
+sudo ip link set eth1 up
+sudo ip link set eth2 up
+```
+
+### Verify Bridge Membership
+
+```bash
+bridge link show
+```
+
+---
+
+## ⚠️ Important Notes
+
+- The interface must be **down** before assigning it to a bridge.
+- Do not assign an IP address directly to bridge member interfaces.
+- Assign IP to the **bridge device** (`br0`) instead.
+
+### Assigning IP to Bridge
+
+```bash
+sudo ip addr add 192.168.1.100/24 dev br0
+sudo ip link set br0 up
+```
+
+---
+
+## 🧪 Hands-on Lab: Add Interfaces to a Bridge
+
+### Assumptions
+
+- Bridge `br0` is already created
+- Interfaces `eth1` and `eth2` are available (can be virtual)
+
+```bash
+# Add interfaces to bridge
+sudo ip link set eth1 down
+sudo ip link set eth2 down
+sudo ip link set eth1 master br0
+sudo ip link set eth2 master br0
+sudo ip link set eth1 up
+sudo ip link set eth2 up
+
+# Assign IP to bridge, not interfaces
+sudo ip addr add 192.168.1.100/24 dev br0
+sudo ip link set br0 up
+
+# Verify
+bridge link
+ip addr show br0
+```
+
+---
+
+## 🖼️ Network Topology Diagram (ASCII)
+
+```
+[ eth1 ]         [ eth2 ]
+     \             /
+      \           /
+     [ br0 - Linux Bridge ]
+               |
+         [ IP: 192.168.1.100 ]
+```
+
+---
+
+## ❓ Review Questions
+
+1. Can you assign an IP to a bridge member interface?
+2. What must be done before adding an interface to a bridge?
+3. How do you confirm which interfaces belong to a bridge?
+
+### ✅ Answers
+
+1. ❌ No — assign it to the bridge device
+2. Bring the interface down first
+3. `bridge link show`
+
+---
+
+## 🧯 Troubleshooting Tips
+
+| Symptom | Cause | Fix |
+|--------|--------|-----|
+| `RTNETLINK: Device busy` | Interface still up | Bring it down before assigning |
+| IP not reachable | IP assigned to slave instead of bridge | Assign IP to `br0` only |
+| Bridge not forwarding | Interfaces not up | Ensure interfaces are up with `ip link` |
+
+---
+
+## 🌐 Real-World Example
+
+For containerized applications using LXC or Docker with `--network=bridge`, adding a veth pair to a bridge connects containers to the outside world.
+
+---
+
+Next up: **Lesson 5 - Connectivity Testing and Traffic Flow** 🌐

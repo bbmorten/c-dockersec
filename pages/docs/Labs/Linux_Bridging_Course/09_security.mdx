@@ -1,0 +1,122 @@
+# 🧠 Lesson 9: Security and Isolation for Linux Bridges
+
+## 🎯 Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+- Identify security risks associated with Linux bridges
+- Apply best practices to secure bridge-based networking
+- Implement basic network isolation strategies
+
+---
+
+## 🛡️ Why Bridge Security Matters
+
+Since Linux bridges operate at Layer 2, they're vulnerable to:
+
+- **MAC flooding**
+- **ARP spoofing**
+- **Traffic sniffing** across shared broadcast domains
+
+Bridges used in virtualization expose VMs and containers to lateral movement unless properly secured.
+
+---
+
+## 🔒 Security Best Practices
+
+### 1. Use ebtables or nftables to Filter Layer 2 Traffic
+
+```bash
+# Drop all non-IP traffic
+sudo ebtables -A FORWARD -p ! IPv4 -j DROP
+```
+
+### 2. Disable Promiscuous Mode (unless needed)
+
+```bash
+sudo ip link set br0 promisc off
+```
+
+### 3. Isolate VLANs on the Bridge
+
+Use `bridge vlan` filtering to segregate tenants or workloads.
+
+```bash
+# Assign eth1 to VLAN 10 on br0
+bridge vlan add dev eth1 vid 10 pvid untagged master
+```
+
+### 4. Limit Bridge Interfaces with Access Rules
+
+Use `iptables` or `nftables` to control traffic entering/exiting bridge interfaces.
+
+```bash
+# Example nftables rule
+nft add rule inet filter forward iifname "br0" ip daddr 10.0.0.0/8 drop
+```
+
+---
+
+## 🧪 Hands-on Lab: Secure a Bridge with ebtables and VLAN
+
+### Step 1: Block ARP spoofing
+
+```bash
+sudo ebtables -A FORWARD -p ARP --arp-opcode Reply -j DROP
+```
+
+### Step 2: Assign VLAN and test
+
+```bash
+# Add VLAN filtering on eth2
+bridge vlan add dev eth2 vid 20 pvid untagged master
+bridge vlan show
+```
+
+> Use `tcpdump -i br0` to validate ARP is blocked and traffic is filtered.
+
+---
+
+## 🖼️ Diagram: Isolated VLANs with One Bridge
+
+```
+[ eth1 (VLAN 10) ]
+        
+       [ br0 ] --- [ eth2 (VLAN 20) ]
+       /     \
+ [VM1-veth] [VM2-veth]
+```
+
+---
+
+## ❓ Review Questions
+
+1. Name one tool to control Layer 2 filtering on a bridge.
+2. Why should VLANs be used with bridges?
+3. What command disables promiscuous mode?
+
+### ✅ Answers
+
+1. `ebtables` or `nftables`
+2. To enforce isolation across different tenants or services
+3. `ip link set br0 promisc off`
+
+---
+
+## 🧯 Troubleshooting Tips
+
+| Symptom | Cause | Fix |
+|--------|--------|-----|
+| Containers can sniff each other's traffic | No isolation | Implement VLAN filtering or namespace isolation |
+| VLAN not applied | Interface not part of bridge or misconfigured | Check with `bridge vlan show` |
+| Bridge accepts spoofed ARP | No Layer 2 filtering | Use `ebtables` rules to block ARP replies |
+
+---
+
+## 🌐 Real-World Example
+
+In a multi-tenant KVM cloud or a Docker lab, configuring VLANs and applying `ebtables` filters prevents tenants from intercepting or spoofing each other’s traffic.
+
+---
+
+Next up: **Lesson 10 – Bridge Performance Tuning** 🚀

@@ -1,0 +1,146 @@
+# 🧠 Lesson 6: Bridging with Virtual Machines and Containers
+
+## 🎯 Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+- Set up Linux bridges for use with virtual machines and containers
+- Understand different networking modes for KVM/libvirt, Docker, Podman, and LXC
+- Connect virtual NICs to bridges to provide network access
+
+---
+
+## 🧱 Bridging with Virtual Machines (KVM / QEMU / Libvirt)
+
+### 🔧 Libvirt Bridge Setup
+
+Libvirt typically uses `virbr0` for NAT. To use a Linux bridge for full external access:
+
+#### Step 1: Create a persistent bridge via Netplan
+
+```yaml
+# /etc/netplan/01-bridge.yaml
+network:
+  version: 2
+  renderer: networkd
+  bridges:
+    br0:
+      interfaces: [eth0]
+      dhcp4: true
+```
+
+```bash
+sudo netplan apply
+```
+
+#### Step 2: Configure in `virt-manager`
+
+- Open VM settings → Network
+- Change interface to **Bridge br0**
+- Device model: virtio (optional)
+
+---
+
+## 🐳 Docker Bridge Integration
+
+Docker uses `docker0` bridge by default. To use a custom bridge:
+
+### Step-by-Step
+
+```bash
+# Create a custom bridge
+sudo ip link add name br0 type bridge
+sudo ip link set dev br0 up
+
+# Connect container to it with custom networking
+docker network create \
+  --driver=bridge \
+  --subnet=192.168.50.0/24 \
+  --gateway=192.168.50.1 \
+  -o "com.docker.network.bridge.name"="br0" \
+  br0net
+
+# Run container
+docker run -it --rm --network=br0net alpine sh
+```
+
+---
+
+## ⚙️ Podman + Network Bridge
+
+### Using CNI Plugins (default)
+
+Podman uses **CNI** under the hood:
+
+```bash
+# List networks
+podman network ls
+
+# Create new bridge network
+podman network create --subnet 10.89.0.0/24 mybr
+
+# Run container with custom bridge
+podman run -it --rm --network=mybr alpine
+```
+
+---
+
+## 🧪 Hands-on Lab: Bridge with KVM and Docker
+
+### 1. KVM VM Network Setup
+
+- Install: `sudo apt install virt-manager qemu-kvm libvirt-daemon-system`
+- Create a Linux bridge as shown
+- Launch VM and attach NIC to bridge
+- Ping gateway or another VM on same bridge
+
+### 2. Docker Custom Bridge
+
+- Follow Docker steps above to create and connect to custom bridge
+- Inspect with `docker network inspect br0net`
+
+---
+
+## 🖼️ Diagram: Virtual Bridge Topology
+
+```
+[ eth0 ]
+    |
+[ Linux Bridge (br0) ]
+    |         |
+ [ VM ]    [ Container ]
+```
+
+---
+
+## ❓ Review Questions
+
+1. What is the default Docker bridge called?
+2. How do you attach a KVM VM to a custom Linux bridge?
+3. What command lists Podman networks?
+
+### ✅ Answers
+
+1. `docker0`
+2. Set NIC to use `br0` in virt-manager or XML config
+3. `podman network ls`
+
+---
+
+## 🧯 Troubleshooting Tips
+
+| Symptom | Cause | Fix |
+|--------|--------|-----|
+| VM has no internet | Bridge not connected to uplink | Add physical NIC to bridge |
+| Container can't ping | Wrong subnet or missing IP | Check bridge IP and routing |
+| Bridge not visible | Not set up or not up | `ip link set br0 up` |
+
+---
+
+## 🌐 Real-World Example
+
+On a developer workstation, you can run multiple containers and VMs sharing the same bridge. This allows integration testing across tools like nginx (in a container) and PostgreSQL (in a VM).
+
+---
+
+Next up: **Lesson 7 - Spanning Tree Protocol (STP) on Linux Bridges** 🌲

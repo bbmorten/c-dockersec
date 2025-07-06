@@ -1,0 +1,57 @@
+---
+title: Understanding `.dockerenv`
+description: A detailed explanation of the `.dockerenv` file, its purpose, location, and significance in Docker containers.
+---
+# Understanding `.dockerenv`
+
+The `.dockerenv` file is a **special marker file** that is **automatically created by Docker** **inside the root (`/`) of containers**.
+
+---
+
+### 📦 Purpose
+
+`.dockerenv` is used internally by Docker to **indicate that the process is running inside a Docker container**.
+
+---
+
+### 📍 Location
+
+* Full path: `/`.
+* You can confirm this by running inside a container:
+
+  ```bash
+  docker run --rm ubuntu ls -l /.dockerenv
+  ```
+
+---
+
+### ⚙️ Why it's useful
+
+Some applications or scripts check for the existence of this file to detect if they are running inside Docker. For example:
+
+```bash
+if [ -f /.dockerenv ]; then
+  echo "Running inside Docker"
+fi
+```
+
+---
+
+### 🧼 Can I delete it?
+
+* **No**, it is managed by Docker.
+* It's a **zero-byte file**, harmless and **required by Docker** for certain runtime operations or environment detection.
+* Deleting it may break container introspection or detection logic.
+
+---
+
+### 🔐 Security Note
+
+You **shouldn't rely on it alone** for security checks, as it can be spoofed or absent in other container runtimes (like Podman). Instead, combine it with:
+
+* `/proc/1/cgroup` inspection
+* Namespace checks
+* Environment variables like `container=docker`
+
+---
+

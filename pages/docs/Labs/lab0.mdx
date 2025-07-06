@@ -1,0 +1,298 @@
+# Lab 0 : Preparing Your Environment
+## Objective
+Set up your local environment for Docker security labs, including installing Docker and basic configuration.
+
+Open an ssh connection to your assigned virtual machine (VM) 192.168.48.140+`${YOUR_ID}` using the provided credentials.
+
+
+```shell
+username: vm
+password: Password1!
+```
+
+
+```shell
+ssh-copy-id vm@192.168.48.155 # Instructor PC * do not connect to this machine
+```
+
+
+```shell
+ssh vm@192.168.48.155
+```
+
+## Steps
+
+1. **Install Docker**: 
+
+    Clone the following repository to get started with Docker security labs:
+   
+    ```bash
+    git clone https://github.com/docker/docker-install.git
+    cd docker-install
+    ```
+
+    Run the installation script:
+
+    ```bash
+    sh install.sh
+    ```
+
+
+    ```shell filename="Sample Output"
+    vm@DS-STD15:~/repos/docker-install$ sh install.sh
+    # Executing docker install script, commit:
+    + sudo -E sh -c apt-get -qq update >/dev/null
+    + sudo -E sh -c DEBIAN_FRONTEND=noninteractive apt-get -y -qq install ca-certificates curl >/dev/null
+    + sudo -E sh -c install -m 0755 -d /etc/apt/keyrings
+    + sudo -E sh -c curl -fsSL "https://download.docker.com/linux/ubuntu/gpg" -o /etc/apt/keyrings/docker.asc
+    + sudo -E sh -c chmod a+r /etc/apt/keyrings/docker.asc
+    + sudo -E sh -c echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" > /etc/apt/sources.list.d/docker.list
+    + sudo -E sh -c apt-get -qq update >/dev/null
+    + sudo -E sh -c DEBIAN_FRONTEND=noninteractive apt-get -y -qq install docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-ce-rootless-extras docker-buildx-plugin docker-model-plugin >/dev/null
+    Scanning processes...
+    Scanning linux images...
+    + sudo -E sh -c docker version
+    Client: Docker Engine - Community
+     Version:           28.3.1
+     API version:       1.51
+     Go version:        go1.24.4
+     Git commit:        38b7060
+     Built:             Wed Jul  2 20:56:27 2025
+     OS/Arch:           linux/amd64
+     Context:           default
+
+    Server: Docker Engine - Community
+     Engine:
+      Version:          28.3.1
+      API version:      1.51 (minimum version 1.24)
+      Go version:       go1.24.4
+      Git commit:       5beb93d
+      Built:            Wed Jul  2 20:56:27 2025
+      OS/Arch:          linux/amd64
+      Experimental:     false
+     containerd:
+      Version:          1.7.27
+      GitCommit:        05044ec0a9a75232cad458027ca83437aae3f4da
+     runc:
+      Version:          1.2.5
+      GitCommit:        v1.2.5-0-g59923ef
+     docker-init:
+      Version:          0.19.0
+      GitCommit:        de40ad0
+
+    ================================================================================
+
+    To run Docker as a non-privileged user, consider setting up the
+    Docker daemon in rootless mode for your user:
+
+        dockerd-rootless-setuptool.sh install
+
+    Visit https://docs.docker.com/go/rootless/ to learn about rootless mode.
+
+
+    To run the Docker daemon as a fully privileged service, but granting non-root
+    users access, refer to https://docs.docker.com/go/daemon-access/
+
+    WARNING: Access to the remote API on a privileged Docker daemon is equivalent
+             to root access on the host. Refer to the 'Docker daemon attack surface'
+             documentation for details: https://docs.docker.com/go/attack-surface/
+
+    ================================================================================
+
+    vm@DS-STD15:~/repos/docker-install$
+    ```
+
+
+2. **Verify Docker Installation**:
+
+   ```bash
+   docker --version
+   ```
+
+
+    ```shell
+    vm@DS-STD15:~/repos/docker-install$ docker --version
+    Docker version 28.3.1, build 38b7060
+    vm@DS-STD15:~/repos/docker-install$ id -Gn
+    vm adm cdrom sudo dip plugdev lxd
+    vm@DS-STD15:~/repos/docker-install$ docker ps
+    permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock: Get "http://%2Fvar%2Frun%2Fdocker.sock/v1.51/containers/json": dial unix /var/run/docker.sock: connect: permission denied
+    vm@DS-STD15:~/repos/docker-install$ sudo docker ps
+    CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+    ```
+
+    Add yourself to the `docker` group to avoid using `sudo` for Docker commands:
+
+    ```bash
+    sudo usermod -aG docker $USER
+    ```
+    Log out and log back in for the group changes to take effect.
+
+
+
+3. **Run a Test Container**:
+   ```bash
+   docker run hello-world
+   ```
+
+## Using a common registry
+
+### Set up a local Docker registry on instructor VM
+
+Instructor VM IP is  `192.168.48.42`
+
+
+```shell
+ssh vm@192.168.48.42
+mkdir -p /home/vm/labs/{certs,data}
+
+cd labs
+
+openssl req \
+  -newkey rsa:2048 -nodes -keyout certs/domain.key \
+  -x509 -days 365 -out certs/domain.crt \
+  -subj "/CN=192.168.48.42" \
+  -addext "subjectAltName = DNS:localhost,DNS:ST-01-02,IP:192.168.48.42"
+
+docker run -d \
+  --name private-registry \
+  --restart always \
+  -p 5000:5000 \
+  -v ./data:/var/lib/registry:z \
+  -v ./certs:/certs:z \
+  -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
+  -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
+  docker.io/library/registry:3
+```
+
+### Configure Student machines to trust the registry
+
+
+```shell
+ssh vm@192.168.48.155 # Student PC
+scp vm@192.168.48.42:/home/vm/labs/certs/domain.crt ./registry.crt
+sudo mkdir -p /etc/docker/certs.d/192.168.48.42:5000/
+sudo cp ./registry.crt /etc/docker/certs.d/192.168.48.42:5000/ca.crt
+sudo mkdir -p /etc/docker/certs.d/ST-01-02:5000/
+
+
+sudo cp ./registry.crt /usr/local/share/ca-certificates/docker-registry.crt
+sudo update-ca-certificates
+
+
+echo "192.168.48.42 ST-01-02" | sudo tee -a /etc/hosts
+sudo systemctl restart docker
+# If docker is running as a user service, you may need to restart it with:
+# systemctl --user restart docker
+sudo systemctl status docker
+```
+
+
+### Test connection
+
+
+```shell
+curl -k https://192.168.48.42:5000/v2/_catalog
+
+```
+
+### Test Docker operations
+
+```shell
+docker pull alpine:latest
+docker tag alpine:latest 192.168.48.42:5000/alpine:latest
+docker push 192.168.48.42:5000/alpine:latest
+docker pull 192.168.48.42:5000/alpine:latest
+```
+
+### Image download and upload script
+
+Name the script `docker-pull-push.sh` and place it in your home directory.
+
+```bash filename="docker-pull-push.sh"
+#!/bin/bash
+
+# Docker Registry Push/Pull Script
+# Usage: ./script.sh <image_name> [source_tag] [target_tag]
+# If only image_name is provided, uses 'latest' for both tags
+
+REGISTRY="192.168.48.42:5000"
+
+# Check if at least one argument is provided
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <image_name> [source_tag] [target_tag]"
+    echo "Example: $0 alpine"
+    echo "Example: $0 alpine latest v1.0"
+    exit 1
+fi
+
+# Get arguments
+IMAGE_NAME="$1"
+SOURCE_TAG="${2:-latest}"  # Default to 'latest' if not provided
+TARGET_TAG="${3:-latest}"  # Default to 'latest' if not provided
+
+# Construct full image names
+SOURCE_IMAGE="${IMAGE_NAME}:${SOURCE_TAG}"
+TARGET_IMAGE="${REGISTRY}/${IMAGE_NAME}:${TARGET_TAG}"
+
+echo "=== Docker Registry Operations ==="
+echo "Source image: ${SOURCE_IMAGE}"
+echo "Target image: ${TARGET_IMAGE}"
+echo "Registry: ${REGISTRY}"
+echo
+
+# Step 1: Pull the original image
+echo "1. Pulling ${SOURCE_IMAGE}..."
+if docker pull "${SOURCE_IMAGE}"; then
+    echo "✓ Successfully pulled ${SOURCE_IMAGE}"
+else
+    echo "✗ Failed to pull ${SOURCE_IMAGE}"
+    exit 1
+fi
+echo
+
+# Step 2: Tag the image for the registry
+echo "2. Tagging ${SOURCE_IMAGE} as ${TARGET_IMAGE}..."
+if docker tag "${SOURCE_IMAGE}" "${TARGET_IMAGE}"; then
+    echo "✓ Successfully tagged image"
+else
+    echo "✗ Failed to tag image"
+    exit 1
+fi
+echo
+
+# Step 3: Push to the registry
+echo "3. Pushing ${TARGET_IMAGE} to registry..."
+if docker push "${TARGET_IMAGE}"; then
+    echo "✓ Successfully pushed ${TARGET_IMAGE}"
+else
+    echo "✗ Failed to push to registry"
+    exit 1
+fi
+echo
+
+# Step 4: Check if image is in the registry catalog
+echo "4. Checking registry catalog..."
+if curl -k -s https://192.168.48.42:5000/v2/_catalog | grep -q "\"${IMAGE_NAME}\""; then
+    echo "✓ Image ${IMAGE_NAME} found in registry catalog"
+else
+    echo "⚠ Image ${IMAGE_NAME} not found in catalog (may take a moment to appear)"
+fi
+echo
+
+# Step 5: Pull from the registry to verify
+echo "5. Verifying by pulling ${TARGET_IMAGE} from registry..."
+if docker pull "${TARGET_IMAGE}"; then
+    echo "✓ Successfully verified - pulled ${TARGET_IMAGE} from registry"
+else
+    echo "✗ Failed to pull from registry for verification"
+    exit 1
+fi
+
+echo
+echo "=== All operations completed successfully! ==="
+echo "Image ${SOURCE_IMAGE} has been pushed to registry as ${TARGET_IMAGE}"
+echo
+echo "Registry catalog contents:"
+curl -k -s https://192.168.48.42:5000/v2/_catalog | python3 -m json.tool 2>/dev/null || curl -k -s https://192.168.48.42:5000/v2/_catalog
+```

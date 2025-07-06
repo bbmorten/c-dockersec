@@ -1,4 +1,4 @@
-# Lab: Exploring Process Relationships in Containers (Ubuntu 24.04 Guide)
+# Lab 2: Exploring Process Relationships in Containers (Ubuntu 24.04 Guide)
 
 ## Objective
 Understand and visualize the relationship between process IDs (PIDs) on the host, container engine, runtime, and inside the container using tools like `pstree`, `ps`, and `nsenter`.
@@ -13,25 +13,31 @@ Understand and visualize the relationship between process IDs (PIDs) on the host
 
 1. **Start a Test Container**
    ```bash
-   docker run -d --name proc-demo ubuntu:24.04 sleep 300
+   docker run -d --name proc-demo ubuntu:24.04 sleep 3000
+   # From a private registry
+   docker run -d --name proc-demo 192.168.48.42:5000/ubuntu:24.04 sleep 3000
    ```
 
 2. **Find the Container's PID on the Host**
    - Get the container's main process PID as seen by the host:
      ```bash
      docker inspect -f '{{.State.Pid}}' proc-demo
+     export CONTAINER_PID=$(docker inspect -f '{{.State.Pid}}' proc-demo)
      ```
    - Note this PID (e.g., 12345).
 
 3. **Visualize the Process Tree**
    - Use `pstree` to see the relationship between Docker, containerd, runc, and the container process:
      ```bash
-     sudo pstree -s -p 12345
+     sudo pstree -s -p ${CONTAINER_PID}
      ```
-   - Look for a hierarchy like:
+   - Look for a hierarchy like: [Process Tree Example](../Examples/pstree-container-pid.mdx)
      ```
      systemd(1)-+-containerd-shim(PID3)-+-sleep(12345)
      ```
+
+
+
 
 4. **Explore the Container's Process Namespace**
    - Use `nsenter` to enter the container's PID namespace:

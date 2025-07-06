@@ -1,0 +1,82 @@
+---
+title: containerd-shim threads in pstree
+description: Understanding the `containerd-shim` threads shown in `pstree` output,
+---
+# `containerd-shim threads` in `pstree` Output Explained
+
+
+
+
+The `11*[{containerd-shim}]` notation in the `pstree` output means:
+
+> 🔹 **`containerd-shim` has 11 kernel threads (or lightweight threads), shown as `{containerd-shim}` processes, and they are being grouped/hidden in the tree view for brevity.**
+
+---
+
+### 🧠 What Does `{process}` Mean?
+
+In `pstree`:
+
+* Entries wrapped in `{}` (e.g., `{containerd-shim}`) represent **threads**, not full-blown processes.
+* These threads are part of the main process (in this case, `containerd-shim`) and share the same PID in the kernel's task group.
+
+---
+
+### 🧩 Why 11 Threads?
+
+* `containerd-shim` uses multiple **goroutines** internally (it's written in Go), and Go schedules these on kernel threads (via `runtime.LockOSThread`).
+* Some of these threads are:
+
+  * I/O handlers (pipes for container’s stdout/stderr)
+  * Signal handlers
+  * Reaper for the child process
+  * Timer and epoll loops
+
+---
+
+### 📘 Example Breakdown
+
+This line:
+
+```bash
+containerd-shim─┬─sleep
+                └─11*[{containerd-shim}]
+```
+
+means:
+
+* `containerd-shim` is running and managing the `sleep` process.
+* It has **11 kernel threads** currently active.
+* `pstree` hides them by default as `11*[{...}]`. You can see them in detail with `ps` or by disabling thread grouping.
+
+---
+
+### 🔎 How to See These Threads Individually
+
+To expand and list these threads:
+
+```bash
+ps -T -p <PID-of-containerd-shim>
+```
+
+Example:
+
+```bash
+ps -T -p 65605
+```
+
+This will show something like:
+
+```
+  PID  SPID TTY      TIME     CMD
+65605 65605 ?        00:00:00 containerd-shim
+65605 65606 ?        00:00:00 containerd-shim
+65605 65607 ?        00:00:00 containerd-shim
+...
+```
+
+* `SPID` = **thread ID**
+* All threads belong to the same process (`PID`)
+
+---
+

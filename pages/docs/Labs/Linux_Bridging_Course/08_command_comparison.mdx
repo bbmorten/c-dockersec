@@ -1,0 +1,109 @@
+# 🧠 Lesson 8: Command Comparison – `ip` vs `bridge` vs `brctl`
+
+## 🎯 Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+- Understand the differences between legacy and modern Linux bridge tools
+- Use modern `ip` and `bridge` commands for all management tasks
+- Recognize deprecated usage and migration strategies
+
+---
+
+## 🛠️ Overview of Tools
+
+| Tool     | Status       | Purpose                          | Recommended? |
+|----------|--------------|----------------------------------|--------------|
+| `brctl`  | Deprecated   | Legacy bridge utility            | ❌ No         |
+| `ip`     | Modern       | General networking tool          | ✅ Yes        |
+| `bridge` | Modern       | Bridge-specific management       | ✅ Yes        |
+
+> 📌 The `bridge` command is a sub-tool in the `iproute2` suite, focusing solely on bridge control.
+
+---
+
+## 🔍 Command Equivalents
+
+| Task                        | `brctl`                      | `ip` / `bridge`                                      |
+|-----------------------------|------------------------------|------------------------------------------------------|
+| Create bridge               | `brctl addbr br0`            | `ip link add name br0 type bridge`                   |
+| Delete bridge               | `brctl delbr br0`            | `ip link delete br0 type bridge`                     |
+| Add interface to bridge     | `brctl addif br0 eth1`       | `ip link set eth1 master br0`                        |
+| Remove interface from bridge| `brctl delif br0 eth1`       | `ip link set eth1 nomaster`                          |
+| Show bridges                | `brctl show`                 | `bridge link` or `bridge vlan`                       |
+| Enable STP                  | `brctl stp br0 on`           | `ip link set br0 type bridge stp_state 1`            |
+
+---
+
+## 🧪 Hands-on Lab: Convert brctl to ip/bridge
+
+### 1. Legacy `brctl` approach
+
+```bash
+# Legacy (do not use in production)
+sudo brctl addbr br0
+sudo brctl addif br0 eth1
+sudo ip link set br0 up
+```
+
+### 2. Modern `ip` + `bridge`
+
+```bash
+# Modern approach
+sudo ip link add name br0 type bridge
+sudo ip link set eth1 master br0
+sudo ip link set br0 up
+```
+
+### View bridge status
+
+```bash
+bridge link
+bridge vlan
+```
+
+---
+
+## 🖼️ Command Relationship Diagram
+
+```mermaid
+flowchart LR
+    A[`brctl (legacy)`] -->|deprecated| B[`ip link`]
+    A -->|deprecated| C[`bridge`]
+    B --> D[`Modern Networking`]
+    C --> D
+```
+
+---
+
+## ❓ Review Questions
+
+1. Which tool is deprecated: `brctl`, `ip`, or `bridge`?
+2. How do you assign an interface to a bridge using modern commands?
+3. What is the command to view all bridge ports?
+
+### ✅ Answers
+
+1. `brctl`
+2. `ip link set ethX master br0`
+3. `bridge link`
+
+---
+
+## 🧯 Troubleshooting Tips
+
+| Symptom | Cause | Fix |
+|--------|--------|-----|
+| `brctl` command not found | Not installed or deprecated | Use `ip` and `bridge` instead |
+| Interface not assigned | Command syntax issue | Use `ip link set <iface> master <bridge>` |
+| Bridge not visible | Not created | Verify with `ip link show` |
+
+---
+
+## 🌐 Real-World Example
+
+Migrating older KVM deployments from `brctl`-based scripts to `ip`/`bridge` improves compatibility and long-term maintainability across modern Linux systems like Ubuntu 24.04.
+
+---
+
+Next up: **Lesson 9 – Security and Isolation for Linux Bridges** 🛡️

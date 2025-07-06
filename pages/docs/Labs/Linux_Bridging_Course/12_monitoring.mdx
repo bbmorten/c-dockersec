@@ -1,0 +1,139 @@
+# 🧠 Lesson 12: Monitoring Bridge Traffic
+
+## 🎯 Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+- Monitor live traffic flowing through a Linux bridge
+- Use system tools to capture and analyze packets
+- Understand bridge forwarding behavior with the FDB (Forwarding Database)
+
+---
+
+## 📡 Why Monitor Bridge Traffic?
+
+Monitoring helps you:
+
+- Debug connectivity issues
+- Detect suspicious activity
+- Confirm that VLAN and STP configs are working
+
+---
+
+## 🧪 Hands-on Lab: Monitor Bridge Interfaces
+
+### Prerequisite: A Linux bridge `br0` with connected interfaces or containers
+
+---
+
+## 🔍 Tool 1: `tcpdump`
+
+Capture and inspect packets on the bridge interface:
+
+```bash
+sudo tcpdump -i br0 -nn -e
+```
+
+> `-e` shows Ethernet headers including MAC addresses
+
+Capture only ARP packets:
+
+```bash
+sudo tcpdump -i br0 arp
+```
+
+Filter by VLAN tag:
+
+```bash
+sudo tcpdump -i br0 vlan
+```
+
+---
+
+## 📦 Tool 2: `bridge monitor`
+
+Real-time updates for link and VLAN changes:
+
+```bash
+sudo bridge monitor all
+```
+
+Example output:
+
+```
+[LINK] br0 state UP
+[VLAN] veth-br1 VLAN 10 added
+```
+
+---
+
+## 📂 Tool 3: `bridge fdb show`
+
+View the Forwarding Database (MAC address table):
+
+```bash
+bridge fdb show br br0
+```
+
+Typical output:
+
+```
+33:33:00:00:00:01 dev br0 self permanent
+02:42:c0:a8:01:02 dev veth-br1 master br0
+```
+
+---
+
+## 📊 Tool 4: Interface Stats
+
+Use `ip` or `/proc` for raw traffic counters:
+
+```bash
+ip -s link show br0
+cat /proc/net/dev | grep br0
+```
+
+---
+
+## 🖼️ Monitoring Topology
+
+```
+[ veth-br1 ] --> [ br0 ] --> [ veth-br2 ]
+      ^                     ^
+      |                     |
+ tcpdump / fdb       bridge monitor
+```
+
+---
+
+## ❓ Review Questions
+
+1. What tool shows MAC forwarding entries in a bridge?
+2. How do you monitor VLAN changes in real time?
+3. What tcpdump flag reveals Ethernet headers?
+
+### ✅ Answers
+
+1. `bridge fdb show`
+2. `bridge monitor all`
+3. `-e`
+
+---
+
+## 🧯 Troubleshooting Tips
+
+| Symptom | Cause | Fix |
+|--------|--------|-----|
+| No traffic seen in tcpdump | Interface not up | `ip link set dev ... up` |
+| MAC not visible in FDB | No recent traffic | Generate traffic (e.g., `ping`) |
+| VLAN not showing in capture | Improper tagging | Validate with `bridge vlan show` |
+
+---
+
+## 🌐 Real-World Example
+
+In production virtual networks, admins regularly use `tcpdump` and `bridge fdb show` to detect packet loss paths, validate STP convergence, and enforce VLAN correctness.
+
+---
+
+Next up: **Lesson 13 – High Availability and Redundancy with Bridges** ⚙️

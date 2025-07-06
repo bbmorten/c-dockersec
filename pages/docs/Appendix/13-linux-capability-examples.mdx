@@ -1,0 +1,206 @@
+# Linux Capability Examples
+
+---
+
+## 🧠 What Are Linux Capabilities?
+
+Traditionally, processes needed **full root privileges (UID 0)** to perform privileged operations (like binding to ports `<1024` or mounting filesystems). Capabilities allow splitting root privileges into **fine-grained units**, so a process can **retain only what it needs**, improving security.
+
+---
+
+## 🔑 Key Concepts
+
+| Term                  | Description                                                        |
+| --------------------- | ------------------------------------------------------------------ |
+| **Capabilities**      | Units of privilege (e.g., `CAP_NET_BIND_SERVICE`, `CAP_SYS_ADMIN`) |
+| **Effective (Eff)**   | Currently in effect for the process                                |
+| **Permitted (Prm)**   | Allowed to be added to `Eff`; enforced by the kernel               |
+| **Inheritable (Inh)** | Passed to executed children (via `execve`)                         |
+| **Bounding (Bnd)**    | Upper limit; capabilities outside this set can’t be used           |
+| **Ambient (Amb)**     | Used for non-root processes to retain capabilities after `execve`  |
+
+---
+
+## 🔍 View Process Capabilities
+
+### Inspect a process:
+
+```bash
+ps aux | grep nginx
+```
+
+```bash
+# Replace PID with the real one
+cat /proc/<PID>/status | grep Cap
+```
+
+You’ll see fields like:
+
+* `CapInh`, `CapPrm`, `CapEff`, etc.
+
+To decode them:
+
+```bash
+capsh --decode=0000000000003000
+```
+
+---
+
+## 🛠️ Tools You'll Use
+
+Install necessary packages:
+
+```bash
+sudo apt update
+sudo apt install libcap2-bin file
+```
+
+* `getcap`: List capabilities of a binary
+* `setcap`: Set capabilities on a binary
+* `capsh`: View/alter capabilities in shell
+* `capability.h`: Header used in C programming for capabilities
+
+---
+
+## 🎓 Training Exercises
+
+### 1. **Bind to Port 80 Without root**
+
+#### ❌ Default behavior:
+
+```bash
+python3 -m http.server 80
+# OSError: [Errno 13] Permission denied
+```
+
+#### ✅ Grant `CAP_NET_BIND_SERVICE`:
+
+```bash
+sudo setcap 'cap_net_bind_service=+ep' $(which python3.12)
+python3 -m http.server 80
+```
+
+> ✔️ You just bound to a privileged port **without root**.
+
+### 2. **Check Capabilities on a Binary**
+
+```bash
+getcap $(which ping)
+# Example output: /usr/bin/ping = cap_net_raw+ep
+```
+
+### 3. **Remove a Capability**
+
+```bash
+sudo setcap -r $(which ping)
+getcap $(which ping)
+# Now ping will fail unless run with sudo
+```
+
+---
+
+## 🔐 Create a Capability-Secured Shell Script
+
+Let’s say you want a script that can:
+
+* Change network settings (requires `CAP_NET_ADMIN`)
+* But shouldn’t be able to read sensitive files
+
+### `netsetup.sh`
+
+```bash
+#!/bin/bash
+ip link add dummy0 type dummy
+ip link set dummy0 up
+```
+
+### Set Capabilities on a Helper Binary
+
+Create a wrapper:
+
+```bash
+sudo apt install gcc
+cat <<EOF > netsetup.c
+#include <stdlib.h>
+int main() {
+    return system("/usr/local/bin/netsetup.sh");
+}
+EOF
+
+gcc netsetup.c -o /usr/local/bin/netsetup_exec
+sudo cp netsetup.sh /usr/local/bin/netsetup.sh
+sudo chmod +x /usr/local/bin/netsetup.sh
+```
+
+Set capability:
+
+```bash
+sudo setcap cap_net_admin+ep /usr/local/bin/netsetup_exec
+```
+
+Run it:
+
+```bash
+/usr/local/bin/netsetup_exec
+```
+
+---
+
+## ⚙️ Capabilities and Docker (Optional Preview)
+
+Inside Docker, you can drop or add capabilities too:
+
+```bash
+docker run --rm -it --cap-drop=ALL --cap-add=NET_ADMIN ubuntu:24.04 bash
+```
+
+---
+
+## 📋 Useful Capabilities Cheat Sheet
+
+| Capability             | Description                           |
+| ---------------------- | ------------------------------------- |
+| `CAP_NET_BIND_SERVICE` | Bind to ports < 1024                  |
+| `CAP_NET_ADMIN`        | Configure interfaces, routing, etc.   |
+| `CAP_SYS_TIME`         | Set system clock                      |
+| `CAP_SYS_BOOT`         | Reboot the system                     |
+| `CAP_DAC_OVERRIDE`     | Ignore file read/write/execute checks |
+| `CAP_CHOWN`            | Change file ownership                 |
+| `CAP_SETUID`, `SETGID` | Set user/group IDs                    |
+| `CAP_SYS_PTRACE`       | Trace other processes                 |
+
+---
+
+## 🧪 Verify Capabilities in C (Optional)
+
+Compile with:
+
+```c
+#include <sys/capability.h>
+#include <stdio.h>
+
+int main() {
+    cap_t caps = cap_get_proc();
+    char *text_caps = cap_to_text(caps, NULL);
+    printf("Capabilities: %s\n", text_caps);
+    cap_free(caps);
+    cap_free(text_caps);
+    return 0;
+}
+```
+
+```bash
+gcc caps.c -lcap -o caps
+./caps
+```
+
+---
+
+## ✅ Summary
+
+Linux capabilities let you **grant fine-grained privileges** to processes or binaries without giving full root access. On Ubuntu 24.04:
+
+* Use `setcap` / `getcap` to manage capabilities.
+* Use them to **reduce attack surface**.
+* Combine with systemd, containers, or AppArmor for even tighter security.
+

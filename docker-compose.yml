@@ -6,7 +6,7 @@ services:
     container_name: nextra-docs
 
     ports:
-      - "3000:3000"
+      - "8018:3000"
     volumes:
       - .:/app
       - /app/node_modules

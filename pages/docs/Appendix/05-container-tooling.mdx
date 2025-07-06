@@ -1,0 +1,123 @@
+---
+title : Container Tooling Comparison
+description: A comprehensive comparison of container tooling, including Docker, containerd, runc, and more. Understand their roles, relationships, and use cases in container management.
+---
+# Container Tooling Comparison
+
+Container tooling can be overwhelming. Let’s break it down by roles and compare the most important tools used in container management. We’ll organize them into layers and clarify what each tool does, how they relate to each other, and provide examples.
+
+---
+
+## 🧱 **1. Architecture Layers Overview**
+
+```
++--------------------------+
+| Docker CLI, nerdctl, UI |
++--------------------------+
+|        Containerd       | ← Container runtime
++--------------------------+
+|       containerd-shim   |
++--------------------------+
+|           runc          | ← OCI runtime
++--------------------------+
+|         Kernel (cgroups, namespaces, etc.)     |
++------------------------------------------------+
+```
+
+---
+
+## 📦 **2. Key Tools by Category**
+
+| Tool                | Category               | Description                                                                     | Example Usage                                   |
+| ------------------- | ---------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------- |
+| **Docker Engine**   | Full container engine  | Includes dockerd, Docker CLI, and uses containerd + runc under the hood         | `docker run nginx`                              |
+| **containerd**      | Container runtime      | High-performance runtime used by Docker, Kubernetes, etc.                       | Kubernetes uses it via CRI plugin               |
+| **runc**            | OCI runtime            | Low-level runtime that actually creates and runs containers (calls `clone()`)   | `runc run <bundle>`                             |
+| **containerd-shim** | Runtime helper         | Sits between containerd and runc; keeps container state even if containerd dies | No direct CLI interaction                       |
+| **ctr**             | containerd CLI         | Low-level CLI to interact with containerd (not user-friendly)                   | `ctr run -t docker.io/library/nginx:latest web` |
+| **crictl**          | Kubernetes CLI         | Interacts with CRI-compatible runtimes (e.g., containerd, CRI-O)                | `crictl ps`, `crictl exec`                      |
+| **nerdctl**         | containerd CLI         | Docker-compatible CLI built for containerd                                      | `nerdctl run -d -p 80:80 nginx`                 |
+| **gVisor**          | Sandboxed runtime      | Implements a user-space kernel for secure container isolation                   | Used with `runsc` runtimeClass in Kubernetes    |
+| **Kata Containers** | Lightweight VM runtime | Launches each container in its own microVM (with QEMU or Cloud Hypervisor)      | `kata-runtime` as OCI runtime in Kubernetes     |
+| **docker-proxy**    | Networking helper      | Handles userland port forwarding for Docker                                     | Automatically started when mapping ports        |
+
+---
+
+## 🧭 **3. Container Tool Relationships**
+
+| Use Case                  | Preferred Tool(s)                                  |
+| ------------------------- | -------------------------------------------------- |
+| Running containers (dev)  | Docker, nerdctl                                    |
+| Low-level container ops   | runc, ctr                                          |
+| Container runtime in prod | containerd, CRI-O                                  |
+| Kubernetes runtime        | containerd + crictl, gVisor/Kata (as RuntimeClass) |
+| Enhanced isolation        | gVisor, Kata Containers                            |
+| Docker alternative        | Podman, nerdctl                                    |
+
+---
+
+## 🔧 **4. Additional Popular Container Tools**
+
+| Tool                | Category               | Notes                                                               |
+| ------------------- | ---------------------- | ------------------------------------------------------------------- |
+| **Podman**          | Docker alternative     | Daemonless, rootless, systemd-friendly                              |
+| **Buildah**         | Container image build  | Used by Podman; builds OCI-compliant images                         |
+| **CRI-O**           | Kubernetes runtime     | Lightweight alternative to containerd in Kubernetes                 |
+| **Minikube / kind** | Kubernetes dev         | Uses Docker, containerd, or CRI-O under the hood for local clusters |
+| **Lima**            | macOS container runner | Runs Linux VMs with containerd and nerdctl on macOS                 |
+
+---
+
+## 🧪 **5. Example Scenarios**
+
+* **Docker (classic use)**
+
+  ```bash
+  docker run -d -p 80:80 nginx
+  ```
+
+  > Uses Docker CLI → Docker Engine → containerd → runc → Linux kernel.
+
+* **Containerd via nerdctl**
+
+  ```bash
+  nerdctl run -d -p 8080:80 nginx
+  ```
+
+  > nerdctl CLI → containerd → runc.
+
+* **Kubernetes runtime with crictl**
+
+  ```bash
+  crictl ps
+  crictl exec -it <container-id> sh
+  ```
+
+  > For clusters using containerd or CRI-O.
+
+* **Sandboxed container in Kubernetes**
+
+  ```yaml
+  runtimeClassName: gvisor
+  ```
+
+  > Adds an extra layer of security for untrusted workloads.
+
+---
+
+## 🧵 **6. Summary Comparison Table**
+
+| Tool            | CLI? | Needs Daemon?       | Runs Containers? | Kubernetes?        | Sandboxing |
+| --------------- | ---- | ------------------- | ---------------- | ------------------ | ---------- |
+| Docker          | ✅    | ✅                   | ✅                | ✅ (via containerd) | ❌          |
+| containerd      | ❌    | ✅                   | ✅                | ✅                  | ❌          |
+| runc            | ❌    | ❌                   | ✅ (low-level)    | ✅                  | ❌          |
+| ctr             | ✅    | ✅ (containerd)      | ✅                | ✅                  | ❌          |
+| nerdctl         | ✅    | ✅ (containerd)      | ✅                | ✅                  | ❌          |
+| crictl          | ✅    | ❌                   | ✅                | ✅                  | ❌          |
+| gVisor (runsc)  | ❌    | ✅                   | ✅ (sandboxed)    | ✅                  | ✅          |
+| Kata Containers | ❌    | ✅                   | ✅ (with VM)      | ✅                  | ✅          |
+| Podman          | ✅    | ❌ (can be rootless) | ✅                | ✅ (via CRI-O)      | ❌          |
+
+---
+

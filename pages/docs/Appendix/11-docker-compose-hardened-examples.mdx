@@ -1,0 +1,82 @@
+# Docker Compose Hardened Examples
+
+Here are **hardened `docker-compose.yml` files** for:
+
+1. ✅ **Python app**
+2. ✅ **Alpine-based shell app**
+
+Both apply security best practices: read-only filesystem, dropped capabilities, no privilege escalation, tmpfs mount, and non-root users.
+
+---
+
+## 🔹 1. Hardened Docker Compose for Python App
+
+Assumes:
+
+* Python app listens on port 8000
+* App is built from a secure Dockerfile like `python:3.12-slim`
+* Non-root user `pythonuser` (UID `1001`) is created in the Dockerfile
+
+```yaml
+version: "3.9"
+
+services:
+  pythonapp:
+    image: my-secure-python-app:latest
+    container_name: secure_python
+    ports:
+      - "8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: "1001:1001"  # Matches USER in Dockerfile
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: "1"
+      ENVIRONMENT: production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+```
+
+---
+
+## 🔸 2. Hardened Docker Compose for Alpine Shell App
+
+Assumes:
+
+* Simple shell script binary app (e.g. `/usr/local/bin/app`)
+* Non-root user `secureuser` with UID `1001`
+
+```yaml
+version: "3.9"
+
+services:
+  shellapp:
+    image: my-secure-alpine-app:latest
+    container_name: secure_shell
+    ports:
+      - "8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: "1001:1001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["/usr/local/bin/app", "--health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+```
+
+---

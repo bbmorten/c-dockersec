@@ -1,0 +1,71 @@
+# Docker Compose File example for Secure Deployment
+
+Here’s a **hardened `docker-compose.yml`** example that incorporates runtime security best practices such as:
+
+* Dropping all Linux capabilities
+* Running as a non-root user
+* Read-only filesystem
+* No privilege escalation
+* Minimal volumes
+
+---
+
+## 🔐 Secure `docker-compose.yml` Example
+
+This example assumes you're using a **Node.js app** that listens on port 3000:
+
+```yaml
+version: "3.9"
+
+services:
+  app:
+    image: my-secure-node-app:latest
+    container_name: secure_app
+    ports:
+      - "3000:3000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: "1001:1001"  # Match the non-root UID:GID from the Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+```
+
+---
+
+## 🧪 Optional: With Named Volume (Read-Only)
+
+If your app needs persistent config or static data:
+
+```yaml
+    volumes:
+      - app-config:/app/config:ro
+
+volumes:
+  app-config:
+    external: false
+```
+
+---
+
+## 🧰 Tips
+
+| Feature             | Benefit                                                  |
+| ------------------- | -------------------------------------------------------- |
+| `read_only: true`   | Ensures no writes to the root filesystem                 |
+| `cap_drop: - ALL`   | Removes all Linux capabilities from the container        |
+| `no-new-privileges` | Prevents gaining root via setuid binaries                |
+| `user: 1001:1001`   | Drops root privileges at runtime                         |
+| `tmpfs: /tmp`       | Mounts an ephemeral `/tmp` for runtime-only temp storage |
+
+---

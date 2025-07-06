@@ -1,0 +1,144 @@
+# Dockerfile Security Best Practices
+
+Dockerfiles offer several built-in **security features and best practices** to help harden container images. While Dockerfiles themselves are not comprehensive security tools, they allow you to **reduce the attack surface**, enforce **least privilege**, and manage **capabilities and permissions**.
+
+Here's a breakdown of **security-relevant settings and practices** available through Dockerfiles:
+
+---
+
+## 🔐 1. `USER` – Drop Root Privileges
+
+```Dockerfile
+USER appuser
+```
+
+* **Default user is root**, which is dangerous.
+* Always switch to a **non-root user** as early as possible.
+* Combine with `groupadd`, `useradd`, or `adduser` to create users inside the container.
+
+---
+
+## 🧱 2. `FROM` – Use Minimal and Trusted Base Images
+
+```Dockerfile
+FROM alpine:3.20
+```
+
+* Prefer **minimal base images** (e.g. `alpine`, `distroless`, `busybox`).
+* Use **specific versions** (not `latest`) to avoid unintended changes.
+* Pull from **trusted registries** or sign your base images (see Docker Content Trust).
+
+---
+
+## 📂 3. `COPY` / `ADD` – Limit and Sanitize Context
+
+```Dockerfile
+COPY ./app /app
+```
+
+* Avoid copying unnecessary files (use `.dockerignore`).
+* Prefer `COPY` over `ADD` unless you need archive extraction or remote URLs.
+
+---
+
+## 🔧 4. `RUN` – Avoid Shell Injection
+
+```Dockerfile
+RUN apt-get update && apt-get install -y curl
+```
+
+* Use `&&` instead of multiple `RUN` layers to reduce image size.
+* **Never trust user input** in `RUN` commands.
+* Pin dependencies and validate checksums if downloading files.
+
+---
+
+## 🛡 5. `HEALTHCHECK` – Monitor Container Health
+
+```Dockerfile
+HEALTHCHECK CMD curl -f http://localhost:8080/health || exit 1
+```
+
+* Helps ensure the container is operating correctly.
+* Can trigger automated recovery actions.
+
+---
+
+## 🔒 6. `ENV` – Avoid Leaking Secrets
+
+```Dockerfile
+ENV DB_PASSWORD=supersecret  # ❌ Avoid this!
+```
+
+* **Never bake secrets into the image**.
+* Use runtime secrets injection mechanisms instead (e.g. Docker Secrets, Kubernetes Secrets).
+
+---
+
+## 🪪 7. `LABEL` – Metadata for Security Scanning
+
+```Dockerfile
+LABEL maintainer="security@yourorg.com"
+LABEL org.opencontainers.image.source="https://github.com/your/repo"
+```
+
+* Helps with auditability, scanning tools, SBOM (Software Bill of Materials).
+
+---
+
+## 🔍 8. `CMD` / `ENTRYPOINT` – Avoid Shell Wrappers
+
+```Dockerfile
+CMD ["./myapp"]
+```
+
+* Prefer `exec` form (`JSON array`) over shell form to avoid issues with signal handling and shell injection.
+
+---
+
+## 🔄 9. Multi-Stage Builds – Separate Build/Runtime
+
+```Dockerfile
+FROM golang:1.21 AS build
+WORKDIR /app
+COPY . .
+RUN go build -o main .
+
+FROM scratch
+COPY --from=build /app/main /main
+ENTRYPOINT ["/main"]
+```
+
+* Avoid carrying build tools or sensitive data into the final image.
+
+---
+
+## ⛔️ 10. `VOLUME`, `EXPOSE` – Be Explicit (Optional)
+
+```Dockerfile
+VOLUME /data
+EXPOSE 8080
+```
+
+* While not strict security controls, they document intended use and ports, aiding hardening efforts.
+
+---
+
+## ✅ Bonus: Combine with Docker Runtime Hardening
+
+Dockerfile alone isn't enough. Combine with:
+
+* `docker run` flags:
+
+  * `--read-only`
+  * `--cap-drop=ALL`
+  * `--security-opt=no-new-privileges`
+  * `--tmpfs /tmp`
+* Tools like:
+
+  * Docker Content Trust (`DOCKER_CONTENT_TRUST=1`)
+  * Image scanning tools (Trivy, Docker Scout)
+  * Rootless Docker or Podman
+  * Seccomp/AppArmor/SELinux profiles
+
+---

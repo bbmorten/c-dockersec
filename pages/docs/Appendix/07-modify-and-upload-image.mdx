@@ -1,0 +1,221 @@
+# Modify an image in two different ways and upload it to a registry
+
+
+Here’s how to **modify and upload a BusyBox container image** on **Ubuntu 24.04**, including both:
+
+1. **File system extraction and modification**
+2. **Dockerfile-based modification**
+
+Then you'll push the final image to a **private registry**.
+
+---
+
+## ✅ Assumptions
+
+* You have Docker installed
+* You have access to a private registry (e.g. `myregistry.local:5000`)
+* You have an executable (`mytool`) you want to add
+* Registry login is already handled if authentication is required
+
+---
+
+## 🔧 Method 1: Modify Image via File System (Extract & Repack)
+
+### Step 1: Pull the base image
+
+```bash
+docker pull busybox:latest
+```
+
+### Step 2: Create a container and export its filesystem
+
+```bash
+CONTAINER_ID=$(docker create busybox:latest)
+docker export "$CONTAINER_ID" -o busybox.tar
+```
+
+### Step 3: Extract and modify the filesystem
+
+```bash
+mkdir busybox-rootfs
+tar -xf busybox.tar -C busybox-rootfs
+```
+
+Now copy your executable into the filesystem:
+
+```bash
+cp ./mytool busybox-rootfs/usr/bin/
+chmod +x busybox-rootfs/usr/bin/mytool
+```
+
+### Step 4: Repackage the image using `docker import`
+
+```bash
+tar -C busybox-rootfs -cf busybox-modified.tar .
+cat busybox-modified.tar | docker import - myregistry.local:5000/busybox:custom
+```
+
+---
+
+## 🔧 Method 2: Dockerfile-based Modification
+
+### Step 1: Create a simple Dockerfile
+
+```Dockerfile
+# Dockerfile
+FROM busybox:latest
+COPY mytool /usr/bin/mytool
+RUN chmod +x /usr/bin/mytool
+```
+
+### Step 2: Build the image
+
+```bash
+docker build -t myregistry.local:5000/busybox:custom .
+```
+
+---
+
+## 🚀 Push to Private Registry
+
+Make sure the registry is accessible and optionally add it to `/etc/docker/daemon.json` if it's insecure:
+
+```json
+{
+  "insecure-registries": ["myregistry.local:5000"]
+}
+```
+
+Reload Docker:
+
+```bash
+sudo systemctl restart docker
+```
+
+Then push your image:
+
+```bash
+docker push myregistry.local:5000/busybox:custom
+```
+
+---
+
+## 🧪 Optional: Test the Image
+
+```bash
+docker run --rm myregistry.local:5000/busybox:custom mytool
+```
+
+---
+
+# Rootless Docker alternative
+
+
+Great — here's how to do **the same BusyBox modification using Podman in rootless mode** on **Ubuntu 24.04**, covering both:
+
+---
+
+## ✅ Prerequisites
+
+Ensure you have:
+
+* `podman` installed (`sudo apt install podman`)
+* A **rootless user environment** (`podman info | grep -i rootless` should return `true`)
+* Access to your **private registry** (e.g., `myregistry.local:5000`)
+* Your binary file (e.g., `./mytool`) is built for Linux
+
+---
+
+## 🧰 Method 1: Rootless Podman — Modify by Extracting Filesystem
+
+### Step 1: Pull the base image
+
+```bash
+podman pull busybox:latest
+```
+
+### Step 2: Create a container and export filesystem
+
+```bash
+CID=$(podman create busybox:latest)
+podman export "$CID" -o busybox.tar
+```
+
+### Step 3: Extract and modify the rootfs
+
+```bash
+mkdir busybox-rootfs
+tar -xf busybox.tar -C busybox-rootfs
+cp ./mytool busybox-rootfs/usr/bin/
+chmod +x busybox-rootfs/usr/bin/mytool
+```
+
+### Step 4: Repackage the image
+
+```bash
+tar -C busybox-rootfs -cf busybox-new.tar .
+cat busybox-new.tar | podman import - localhost/busybox:custom-rootless
+```
+
+### Step 5: Push to Private Registry (insecure allowed if needed)
+
+```bash
+podman tag localhost/busybox:custom-rootless myregistry.local:5000/busybox:custom
+podman push --tls-verify=false myregistry.local:5000/busybox:custom
+```
+
+---
+
+## 🧰 Method 2: Rootless Podman — Dockerfile Method
+
+### Step 1: Write `Dockerfile`
+
+```Dockerfile
+FROM busybox:latest
+COPY mytool /usr/bin/mytool
+RUN chmod +x /usr/bin/mytool
+```
+
+### Step 2: Build image
+
+```bash
+podman build -t myregistry.local:5000/busybox:custom -f Dockerfile .
+```
+
+### Step 3: Push it
+
+```bash
+podman push --tls-verify=false myregistry.local:5000/busybox:custom
+```
+
+> ✅ If registry requires authentication:
+
+```bash
+podman login myregistry.local:5000
+```
+
+---
+
+## 🧪 Test the final image (still rootless)
+
+```bash
+podman run --rm myregistry.local:5000/busybox:custom mytool
+```
+
+---
+
+## 🛠️ Tips for Rootless Podman + Registry
+
+If your registry is **insecure (HTTP)**, add it to your user’s Podman config:
+
+```bash
+mkdir -p ~/.config/containers
+cat <<EOF > ~/.config/containers/registries.conf
+[[registry]]
+prefix = "myregistry.local:5000"
+insecure = true
+EOF
+```
+
+---
+

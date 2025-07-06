@@ -1,0 +1,138 @@
+---
+title : Trusted Container Images
+description: A guide to understanding trusted container images, their importance, and how to verify them for security and compliance.
+---
+# Trusted Container Images
+
+
+Trusted container image mechanisms are essential for ensuring the **authenticity, integrity, and provenance** of container images. These mechanisms help prevent the execution of tampered or malicious images in production. Below is a breakdown of **trusted image mechanisms** and **code security methods** used in container ecosystems:
+
+---
+
+## 🛡️ 1. Trusted Image Mechanisms
+
+### ✅ **1.1. Image Signing**
+
+Used to verify that the image comes from a trusted source and hasn’t been altered.
+
+| Tool/Standard                  | Description                                                                               |
+| ------------------------------ | ----------------------------------------------------------------------------------------- |
+| **Docker Content Trust (DCT)** | Uses **Notary v1** (based on The Update Framework - TUF) to sign and verify images.       |
+| **Notary v2** (OCI + TUF)      | Next-gen image signing spec, integrated with OCI and projects like Harbor and ORAS.       |
+| **Cosign**                     | Part of **Sigstore**, allows signing container images using keyless or key-based methods. |
+| **GPG-based signing**          | Manual GPG signature process over image digests; less common today.                       |
+
+---
+
+### 🔒 **1.2. Immutable Tags & Digests**
+
+* **Avoid `:latest`**: Always reference images by **immutable digests** (e.g., `sha256:...`).
+* Ensures reproducibility and integrity.
+
+---
+
+### 🔍 **1.3. Image Scanning**
+
+Used to detect vulnerabilities, malware, secrets, or misconfigurations inside container images.
+
+| Tool        | Description                                             |
+| ----------- | ------------------------------------------------------- |
+| **Trivy**   | Fast, open-source vulnerability and secret scanner.     |
+| **Grype**   | Another OSS scanner with SBOM support.                  |
+| **Anchore** | Enterprise-grade image scanning and policy enforcement. |
+| **Clair**   | Used by Harbor registry for scanning images.            |
+
+---
+
+### 🧾 **1.4. Software Bill of Materials (SBOM)**
+
+* Describes all components (packages, libraries, licenses) in the image.
+* Helps trace and audit dependencies.
+
+| Tool                 | Description                                 |
+| -------------------- | ------------------------------------------- |
+| **Syft**             | Generates SBOMs from container images.      |
+| **Trivy**            | Can also output SBOM.                       |
+| **CycloneDX / SPDX** | Common SBOM formats supported across tools. |
+
+---
+
+### 🏷️ **1.5. Provenance & Attestations**
+
+* Ensures images are **built from trusted sources**, with cryptographic attestation of the build process.
+
+| Tool                                                  | Description                                                                        |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **SLSA** (Supply-chain Levels for Software Artifacts) | A framework for securing build pipelines.                                          |
+| **in-toto**                                           | Framework for secure software supply chain, used in Tekton Chains, GitHub Actions. |
+| **Cosign + Rekor**                                    | Attest build provenance and publish transparency logs.                             |
+
+---
+
+## 🔐 2. Code Security Methods in Containers
+
+These methods ensure the **containerized application code** and **runtime behavior** are secure:
+
+### 🧪 2.1. Static Code Analysis (SAST)
+
+* Scan source code for vulnerabilities before it's built into a container.
+* Tools: **Semgrep**, **SonarQube**, **CodeQL**.
+
+---
+
+### 🚦 2.2. Dynamic Analysis & Behavior Monitoring
+
+* Detect malicious or anomalous behavior at runtime.
+* Tools: **Falco**, **Sysdig**, **Cilium Tetragon**, **eBPF-based security monitors**.
+
+---
+
+### 📦 2.3. Dependency and Package Scanning
+
+* Check for vulnerabilities in libraries bundled into the container.
+* Tools: **Trivy**, **Grype**, **npm audit**, **pip-audit**, etc.
+
+---
+
+### 🧯 2.4. Least Privilege Container Configurations
+
+* Use **read-only filesystems**, **non-root users**, **Seccomp/AppArmor**, **capabilities dropping**, etc.
+
+---
+
+### ⚙️ 2.5. CI/CD Pipeline Hardening
+
+* Ensure builds run in isolated, secure runners.
+* Use **ephemeral runners**, **access-controlled secrets**, **artifact verification**, **multi-stage builds**.
+
+---
+
+## 🏗️ Real-World Example (Combining Tools)
+
+```bash
+# Sign an image with cosign (keyless)
+cosign sign ghcr.io/myorg/myapp@sha256:abc...
+
+# Scan it for CVEs
+trivy image ghcr.io/myorg/myapp:1.0.0
+
+# Generate and attach SBOM
+syft packages ghcr.io/myorg/myapp:1.0.0 -o spdx-json > sbom.json
+cosign attach sbom --sbom sbom.json ghcr.io/myorg/myapp:1.0.0
+```
+
+---
+
+## ✅ Summary Table
+
+| Mechanism              | Purpose                 | Tools/Techniques                         |
+| ---------------------- | ----------------------- | ---------------------------------------- |
+| **Image Signing**      | Authenticity            | Notary v1/v2, Cosign, GPG                |
+| **SBOM**               | Component transparency  | Syft, Trivy, CycloneDX                   |
+| **Scanning**           | Vulnerability detection | Trivy, Clair, Anchore                    |
+| **Attestations**       | Build provenance        | Cosign, in-toto, SLSA                    |
+| **Runtime Security**   | Behavior detection      | Falco, Cilium, AppArmor                  |
+| **Pipeline Hardening** | Secure build & deploy   | GitHub Actions, Tekton Chains, GitLab CI |
+
+---
+

@@ -68,12 +68,11 @@ docker run -d --name test4 --network none busybox sleep 3600
 
 ## dot.net app
 
-http://ndawn.btegitim.com:8014/99-Samples/containerize-net-app/
-
+<http://ndawn.btegitim.com:8014/99-Samples/containerize-net-app/>
 
 ## PID namespace lab
 
-http://ndawn.btegitim.com:8018/docs/Examples/pid_namespaces_lab
+<http://ndawn.btegitim.com:8018/docs/Examples/pid_namespaces_lab>
 
 ## Docker context
 
@@ -157,11 +156,22 @@ docker context import remote-docker remote-docker.dockercontext
 }
 ```
 
-
 ## Trivy, Synk, falco, sysdig
-
 
 ## Seccomp profile
 
 /Users/bulent/git-msp/c-dockersec/pages/docs/Labs/lab-seccomp
 
+## apparmor profile
+
+## tmpfs
+
+<https://docs.docker.com/reference/cli/docker/container/run/#tmpfs>
+
+## privileged
+
+<https://docs.docker.com/reference/cli/docker/container/run/#privileged>
+
+## security-opt
+
+<https://docs.docker.com/reference/cli/docker/container/run/#security-opt>

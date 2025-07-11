@@ -1,0 +1,75 @@
+#include <tunables/global>
+
+profile docker-nginx-restrictive flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/openssl>
+
+  # Network access
+  network inet tcp,
+  network inet6 tcp,
+  network inet udp,
+  network inet6 udp,
+
+  # File system access - very restrictive
+  / r,
+  /etc/ r,
+  /etc/nginx/ r,
+  /etc/nginx/** r,
+  /etc/passwd r,
+  /etc/group r,
+  /etc/hosts r,
+  /etc/resolv.conf r,
+  /etc/nsswitch.conf r,
+  /etc/ssl/ r,
+  /etc/ssl/** r,
+  
+  # Nginx specific paths
+  /usr/sbin/nginx ix,
+  /var/log/nginx/ rw,
+  /var/log/nginx/** rw,
+  /var/cache/nginx/ rw,
+  /var/cache/nginx/** rw,
+  /var/lib/nginx/ rw,
+  /var/lib/nginx/** rw,
+  /usr/share/nginx/ r,
+  /usr/share/nginx/** r,
+  
+  # Runtime directories
+  /run/ rw,
+  /run/nginx.pid rw,
+  /tmp/ rw,
+  /tmp/** rw,
+  
+  # Proc filesystem - limited access
+  @{PROC}/sys/kernel/random/uuid r,
+  @{PROC}/loadavg r,
+  @{PROC}/meminfo r,
+  @{PROC}/stat r,
+  @{PROC}/version r,
+  @{PROC}/uptime r,
+  
+  # Deny dangerous operations
+  deny /proc/sys/kernel/** w,
+  deny /sys/** w,
+  deny mount,
+  deny umount,
+  deny pivot_root,
+  deny ptrace,
+  deny signal,
+  
+  # Capabilities - minimal set
+  capability setuid,
+  capability setgid,
+  capability net_bind_service,
+  capability dac_override,
+  
+  # Deny all other capabilities
+  deny capability mac_admin,
+  deny capability mac_override,
+  deny capability sys_admin,
+  deny capability sys_module,
+  deny capability sys_time,
+  deny capability audit_write,
+  deny capability audit_control,
+}

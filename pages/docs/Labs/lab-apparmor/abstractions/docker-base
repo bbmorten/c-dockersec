@@ -1,0 +1,21 @@
+# Base restrictions for Docker containers
+
+# Deny dangerous operations
+deny /proc/sys/kernel/** w,
+deny /sys/** w,
+deny mount,
+deny umount,
+deny pivot_root,
+
+# Deny dangerous capabilities
+deny capability mac_admin,
+deny capability mac_override,
+deny capability sys_admin,
+deny capability sys_module,
+deny capability sys_time,
+
+# Basic file access
+/etc/passwd r,
+/etc/group r,
+/etc/hosts r,
+/etc/resolv.conf r,

@@ -1,0 +1,29 @@
+#include <tunables/global>
+
+profile docker-nginx-logging flags=(attach_disconnected,mediate_deleted,complain) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/openssl>
+
+  # Network access
+  network,
+
+  # File system access
+  /** mrwlkix,
+  
+  # Proc and sys access
+  @{PROC}/** rw,
+  /sys/** rw,
+  
+  # All capabilities allowed but logged
+  capability,
+  
+  # Mount operations allowed but logged
+  mount,
+  umount,
+  pivot_root,
+  
+  # Signal and ptrace allowed but logged
+  ptrace,
+  signal,
+}

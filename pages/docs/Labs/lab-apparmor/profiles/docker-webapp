@@ -1,0 +1,47 @@
+#include <tunables/global>
+
+# Define variables
+@{WEBAPP_DIR}=/var/www
+@{LOG_DIR}=/var/log/webapp
+
+profile docker-webapp flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+
+  # Application directory
+  @{WEBAPP_DIR}/ r,
+  @{WEBAPP_DIR}/** r,
+  
+  # Log directory
+  @{LOG_DIR}/ rw,
+  @{LOG_DIR}/** rw,
+  
+  # Runtime files
+  /tmp/ rw,
+  /tmp/** rw,
+  /run/ rw,
+  /run/** rw,
+  
+  # Network
+  network inet tcp,
+  network inet udp,
+  
+  # Minimal capabilities
+  capability setuid,
+  capability setgid,
+  capability net_bind_service,
+  
+  # Deny dangerous operations
+  deny /proc/sys/kernel/** w,
+  deny /sys/** w,
+  deny mount,
+  deny umount,
+  deny pivot_root,
+  
+  # Deny dangerous capabilities
+  deny capability mac_admin,
+  deny capability mac_override,
+  deny capability sys_admin,
+  deny capability sys_module,
+  deny capability sys_time,
+}

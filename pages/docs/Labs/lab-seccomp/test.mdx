@@ -1,0 +1,258 @@
+## Seccomp Profile Lab
+This lab demonstrates how to create and apply seccomp profiles in Docker to enhance container security.
+
+- Docker Run Examples with Seccomp
+
+```shell
+# Run container with restrictive seccomp profile
+docker run -d \
+  --name secure-container \
+  --security-opt seccomp=/tmp/restricted-seccomp.json \
+  --read-only \
+  --tmpfs /tmp:exec,nosuid,nodev,size=100m \
+  ubuntu:24.04 \
+  sleep 3600
+
+# Run container with logging seccomp profile
+docker run -d \
+  --name logging-container \
+  --security-opt seccomp=/tmp/logging-seccomp.json \
+  ubuntu:24.04 \
+  sleep 3600
+
+# Run container with no seccomp (dangerous - for comparison)
+docker run -d \
+  --name unsafe-container \
+  --security-opt seccomp=unconfined \
+  ubuntu:24.04 \
+  sleep 3600
+```
+
+- Test Unauthorized Operations
+
+```shell
+# Test with the secure container
+docker exec secure-container mount -t tmpfs none /mnt
+# This should be blocked and potentially kill the container
+
+# Test with the logging container
+docker exec logging-container mount -t tmpfs none /mnt
+# This should be logged but not necessarily blocked
+
+# Check container status
+docker ps -a
+```
+
+- Monitor Seccomp Logs
+
+```shell
+# Monitor system logs for seccomp violations
+sudo journalctl -f | grep -i seccomp
+
+# Alternative: Use dmesg to see kernel messages
+sudo dmesg -w | grep -i seccomp
+
+# Check audit logs (if auditd is running)
+sudo ausearch -m SECCOMP -ts recent
+```
+
+- Enhanced Monitoring setup
+
+```shell
+# Install auditd for better logging
+sudo apt update
+sudo apt install auditd audispd-plugins
+
+# Enable auditd
+sudo systemctl enable auditd
+sudo systemctl start auditd
+
+# Add audit rules for seccomp
+sudo auditctl -a always,exit -F arch=b64 -S all -F key=seccomp-violations
+
+# View audit logs
+sudo ausearch -k seccomp-violations
+```
+
+- Create a monitoring script
+
+```bash
+#!/bin/bash
+
+echo "Monitoring seccomp violations..."
+echo "Press Ctrl+C to stop"
+
+# Monitor kernel messages for seccomp violations
+sudo dmesg -w | while read line; do
+    if echo "$line" | grep -qi "seccomp"; then
+        echo "$(date): SECCOMP VIOLATION - $line"
+        echo "$(date): SECCOMP VIOLATION - $line" >> /tmp/seccomp-violations.log
+    fi
+done
+```
+
+## Seccomp Profile Examples
+
+### Restrictive Seccomp Profile
+
+```json
+{
+  "defaultAction": "SCMP_ACT_LOG",
+  "architectures": [
+    "SCMP_ARCH_X86_64",
+    "SCMP_ARCH_X86",
+    "SCMP_ARCH_X32"
+  ],
+  "syscalls": [
+    {
+      "names": [
+        "accept",
+        "accept4",
+        "access",
+        "bind",
+        "brk",
+        "close",
+        "connect",
+        "dup",
+        "dup2",
+        "execve",
+        "exit",
+        "exit_group",
+        "fork",
+        "fstat",
+        "getpid",
+        "getuid",
+        "listen",
+        "lseek",
+        "mmap",
+        "mprotect",
+        "munmap",
+        "open",
+        "openat",
+        "read",
+        "recv",
+        "recvfrom",
+        "recvmsg",
+        "rt_sigaction",
+        "rt_sigprocmask",
+        "rt_sigreturn",
+        "send",
+        "sendto",
+        "sendmsg",
+        "socket",
+        "socketpair",
+        "stat",
+        "write",
+        "writev"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "names": [
+        "clone",
+        "mount",
+        "umount2",
+        "unshare",
+        "setns",
+        "pivot_root",
+        "chroot",
+        "delete_module",
+        "init_module",
+        "finit_module",
+        "ptrace",
+        "process_vm_readv",
+        "process_vm_writev",
+        "kexec_load",
+        "kexec_file_load",
+        "reboot"
+      ],
+      "action": "SCMP_ACT_KILL",
+      "comment": "Dangerous system calls that can compromise container security"
+    }
+  ]
+}
+```
+
+### Logging Seccomp Profile
+
+```json
+{
+  "defaultAction": "SCMP_ACT_LOG",
+  "architectures": [
+    "SCMP_ARCH_X86_64",
+    "SCMP_ARCH_X86",
+    "SCMP_ARCH_X32"
+  ],
+  "syscalls": [
+    {
+      "names": [
+        "accept",
+        "accept4",
+        "access",
+        "bind",
+        "brk",
+        "close",
+        "connect",
+        "dup",
+        "dup2",
+        "execve",
+        "exit",
+        "exit_group",
+        "fork",
+        "fstat",
+        "getpid",
+        "getuid",
+        "listen",
+        "lseek",
+        "mmap",
+        "mprotect",
+        "munmap",
+        "open",
+        "openat",
+        "read",
+        "recv",
+        "recvfrom",
+        "recvmsg",
+        "rt_sigaction",
+        "rt_sigprocmask",
+        "rt_sigreturn",
+        "send",
+        "sendto",
+        "sendmsg",
+        "socket",
+        "socketpair",
+        "stat",
+        "write",
+        "writev"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    },
+    {
+      "names": [
+        "mount",
+        "umount2",
+        "chroot",
+        "pivot_root",
+        "unshare",
+        "setns",
+        "clone",
+        "ptrace",
+        "process_vm_readv",
+        "process_vm_writev",
+        "init_module",
+        "delete_module",
+        "finit_module"
+      ],
+      "action": "SCMP_ACT_LOG",
+      "comment": "Log dangerous system calls for monitoring"
+    }
+  ]
+}
+```
+
+## Usage Instructions
+
+1. Save the restrictive profile to `/tmp/restricted-seccomp.json`
+2. Save the logging profile to `/tmp/logging-seccomp.json`
+3. Run the Docker commands above to test the profiles
+4. Monitor the logs for seccomp violations

@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  web:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    security_opt:
+      - apparmor:docker-nginx-restrictive
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./html:/usr/share/nginx/html:ro
+    restart: unless-stopped
+
+  app:
+    build: .
+    security_opt:
+      - apparmor:docker-webapp
+    depends_on:
+      - web
+    restart: unless-stopped
+
+  db:
+    image: postgres:14
+    security_opt:
+      - apparmor:docker-database
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  db_data:

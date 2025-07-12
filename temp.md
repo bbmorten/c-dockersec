@@ -1,4 +1,10 @@
 
+## Gist Link
+
+https://gist.github.com/bbmorten/beb91405bb4f53fb3f32a1a0df043d2a
+
+## OneNote link is in gist docs
+
 ## Default Bridge Network (No resolution)
 
 docker rm -f mongodb
@@ -175,3 +181,8 @@ docker context import remote-docker remote-docker.dockercontext
 ## security-opt
 
 <https://docs.docker.com/reference/cli/docker/container/run/#security-opt>
+
+
+
+CMD, ENTRYPOINT
+

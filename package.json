@@ -4,9 +4,9 @@
   "description": "Documentation site built with Nextra",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p 3000",
+    "dev": "next dev -H 0.0.0.0 -p 3033",
     "build": "next build",
-    "start": "next start -H 0.0.0.0 -p 3000",
+    "start": "next start -H 0.0.0.0 -p 3033",
     "export": "next export"
   },
   "dependencies": {
